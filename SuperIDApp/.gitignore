@@ -16,3 +16,4 @@ local.properties
 /.idea/*
 !.idea/gradle.xml
 !.idea/libraries/
+.idea/AndroidProjectSystem.xml
