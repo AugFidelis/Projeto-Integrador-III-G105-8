@@ -10,16 +10,16 @@
 </head>
 <body>
     <main class="container">
-        <form>
+        <form id="loginForm"> <!-- adicinando o id="loginForm"-->
             <div class="logo-container">
             <img src="assets/img/Logo_SuperID.png" alt="Logo SuperID" class="Logo">
             </div>
             <div class="input-box">
-                <input placeholder="Usuário" type="Email">
+                <input placeholder="Usuário" type="Email" id="email" required> <!-- Adicionado id="email" -->
                 <i class="bx bxs-user"></i>
             </div>
             <div class="input-box">
-                <input placeholder="Senha" type="password">
+                <input placeholder="Senha" type="password" id="senha" required> <!-- Adicionado id="senha" -->
                 <i class="bx bxs-lock-alt"></i>
             </div>
 
@@ -34,9 +34,10 @@
             <button type="submit" class="login">Login</button>
 
             <div class="register-link">
-                <p>Não tem uma conta? <a href="#">Cadastre-se.</a> </p>
+                <p>Não tem uma conta? <a href="cadastro.html">Cadastre-se.</a> </p>
             </div>
         </form>
     </main>
+    <script src="login.js"></script> <!-- link para o arquvo login.js -->
 </body>
 </html>
