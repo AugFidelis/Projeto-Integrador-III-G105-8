@@ -14,6 +14,7 @@ import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -30,8 +31,14 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -83,6 +90,34 @@ fun WelcomeScreen(modifier: Modifier = Modifier) {
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     //Pega a altura e largura da tela em dp para incluir tamanhos consistentes com o tamanho da tela do dispositivo
+
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ){
+        var expanded by remember { mutableStateOf(false) }
+
+        IconButton(onClick = { expanded = !expanded },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(screenHeight*0.02f)
+                .padding(top = screenHeight*0.03f)
+        ) {
+            Icon(
+                imageVector = Icons.Default.MoreVert,
+                contentDescription = "Ícone do menu"
+            )
+
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                DropdownMenuItem(
+                    onClick = {},
+                    text = { Text("Ativar modo claro") }
+                )
+            }
+        }
+    }
 
     Column(horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
