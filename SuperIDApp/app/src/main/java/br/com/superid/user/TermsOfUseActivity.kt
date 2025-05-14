@@ -26,8 +26,14 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -57,6 +63,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.superid.R
+import br.com.superid.auth.SignUpActivity
 import br.com.superid.user.ui.theme.SuperIDTheme
 
 class TermsOfUseActivity : ComponentActivity() {
@@ -71,7 +78,9 @@ class TermsOfUseActivity : ComponentActivity() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true
+//    , device = "spec:width=800dp,height=1280dp,dpi=240"
+)
 @Composable
 fun TermsOfUseApp() {
     TermsOfUseScreen(modifier = Modifier
@@ -86,6 +95,8 @@ fun TermsOfUseScreen(modifier: Modifier = Modifier) {
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val context = LocalContext.current
+
+    var expanded by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -103,10 +114,34 @@ fun TermsOfUseScreen(modifier: Modifier = Modifier) {
                             context.startActivity(it)
                         }
                     }) {
-                        Image(painter = painterResource(R.drawable.returnarrow),
-                            contentDescription = "Seta de retorno à tela anterior",
-                            colorFilter = ColorFilter.tint(Color.Black)
-                            )
+//                        Image(painter = painterResource(R.drawable.returnarrow),
+//                            contentDescription = "Seta de retorno à tela anterior",
+//                            colorFilter = ColorFilter.tint(Color.Black)
+//                            )
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Seta de retorno à tela anterior"
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = {
+                        expanded = !expanded
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Ícone de menu"
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Ativar modo claro") },
+                            onClick = {}
+                        )
                     }
                 }
             )
@@ -319,7 +354,9 @@ fun TermsOfUseScreen(modifier: Modifier = Modifier) {
 
                     Button(
                         onClick = {
-
+                            Intent(context, SignUpActivity::class.java).also {
+                                context.startActivity(it)
+                            }
                         },
                         enabled = isAccepted,
                         modifier = Modifier
