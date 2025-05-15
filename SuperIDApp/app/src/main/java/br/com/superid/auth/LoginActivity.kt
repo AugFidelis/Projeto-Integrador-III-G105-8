@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 import br.com.superid.R
 import br.com.superid.user.ui.theme.SuperIDTheme
 
-class MainActivity : ComponentActivity() {
+class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
