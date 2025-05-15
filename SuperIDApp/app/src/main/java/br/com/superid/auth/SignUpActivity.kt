@@ -125,8 +125,8 @@ fun SignUpScreen() {
                         if (task.isSuccessful) {
                             val uid = auth.currentUser?.uid.orEmpty()
                             val user = mapOf(
-                                "email" to email,
-                                "uid" to uid
+                                "Nome" to name,
+                                "Verificado" to false
                             )
 
                             db.collection("Users")
