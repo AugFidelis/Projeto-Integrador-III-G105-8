@@ -18,3 +18,4 @@ local.properties
 !.idea/libraries/
 .idea/AndroidProjectSystem.xml
 .idea/deploymentTargetSelector.xml
+app/google-services.json

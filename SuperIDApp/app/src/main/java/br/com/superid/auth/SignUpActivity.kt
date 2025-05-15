@@ -1,5 +1,6 @@
 package br.com.superid.auth
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -25,27 +26,40 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
+import android.util.Log
+import android.widget.Toast
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 
 class SignUpActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-           SignUpScreen()
+            SuperIDTheme {
+                SignUpScreen()
+            }
         }
     }
 }
 
-
-
 @Composable
-fun SignUpScreen(
-    onSignUpClick: (() -> Unit)? = null
-) {
+fun SignUpScreen() {
+    val context = LocalContext.current
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val auth = Firebase.auth
+    val db = Firebase.firestore
 
     Column(
         modifier = Modifier
@@ -73,31 +87,69 @@ fun SignUpScreen(
             value = password,
             onValueChange = { password = it },
             label = { Text("Senha mestre") },
-            modifier = Modifier.fillMaxWidth(),
-            visualTransformation = PasswordVisualTransformation()
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(8.dp))
+
         TextField(
             value = confirmPassword,
             onValueChange = { confirmPassword = it },
             label = { Text("Confirmar senha") },
-            modifier = Modifier.fillMaxWidth(),
-            visualTransformation = PasswordVisualTransformation()
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth()
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+
+        errorMessage?.let {
+            Text(it, color = MaterialTheme.colorScheme.error)
+            Spacer(modifier = Modifier.height(8.dp))
+        }
 
         Button(
-            onClick = { onSignUpClick?.invoke() },
-            modifier = Modifier.fillMaxWidth()
+            onClick = {
+                if (name.isBlank() || email.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
+                    errorMessage = "Preencha todos os campos."
+                    return@Button
+                }
+
+                if (password != confirmPassword) {
+                    errorMessage = "As senhas não coincidem."
+                    return@Button
+                }
+
+                isLoading = true
+                auth.createUserWithEmailAndPassword(email, password)
+                    .addOnCompleteListener { task ->
+                        isLoading = false
+                        if (task.isSuccessful) {
+                            val uid = auth.currentUser?.uid.orEmpty()
+                            val user = mapOf(
+                                "email" to email,
+                                "uid" to uid
+                            )
+
+                            db.collection("Users")
+                                .document(uid)
+                                .set(user)
+                                .addOnSuccessListener {
+                                    Toast.makeText(context, "Conta criada com sucesso!", Toast.LENGTH_SHORT).show()
+                                    context.startActivity(Intent(context, LoginActivity::class.java))
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.e("FIRESTORE", "Erro ao salvar no Firestore", e)
+                                    errorMessage = "Erro ao salvar dados no banco."
+                                }
+                        } else {
+                            errorMessage = task.exception?.message ?: "Erro ao criar conta."
+                        }
+                    }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isLoading
         ) {
-            Text("Criar conta")
+            Text(if (isLoading) "Carregando..." else "Criar conta")
         }
     }
 }
 
-
-@Preview(showSystemUi = true, showBackground = true)
-@Composable
-fun SignUpScreenPreview() {
-    SignUpScreen()
-}
