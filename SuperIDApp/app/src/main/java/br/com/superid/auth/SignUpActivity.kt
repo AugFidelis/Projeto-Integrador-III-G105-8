@@ -134,7 +134,10 @@ fun SignUpScreen() {
                                 .set(user)
                                 .addOnSuccessListener {
                                     Toast.makeText(context, "Conta criada com sucesso!", Toast.LENGTH_SHORT).show()
-                                    context.startActivity(Intent(context, LoginActivity::class.java))
+
+                                    Intent(context, LoginActivity::class.java).also {
+                                        context.startActivity(it)
+                                    }
                                 }
                                 .addOnFailureListener { e ->
                                     Log.e("FIRESTORE", "Erro ao salvar no Firestore", e)
