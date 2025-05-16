@@ -21,6 +21,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import br.com.superid.R
 import br.com.superid.main.MainActivity
+import br.com.superid.user.WelcomeActivity
 import br.com.superid.user.ui.theme.SuperIDTheme
 import com.google.firebase.auth.FirebaseAuth
 
@@ -55,7 +56,11 @@ fun LoginScreen() {
                     titleContentColor = Color.Black),
                 title = { Text("Login") },
                 navigationIcon = {
-                    IconButton(onClick = {}) {
+                    IconButton(onClick = {
+                        Intent(context, WelcomeActivity::class.java).also{
+                            context.startActivity(it)
+                        }
+                    }) {
                         androidx.compose.foundation.Image(
                             painter = painterResource(id = R.drawable.ic_back),
                             contentDescription = "Voltar",
