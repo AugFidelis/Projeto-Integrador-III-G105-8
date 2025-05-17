@@ -23,6 +23,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import br.com.superid.R
 import br.com.superid.auth.ui.theme.SuperIDTheme
+import com.google.android.gms.tasks.Task
+import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
@@ -173,22 +175,41 @@ fun SignUpScreen(useFirebase: Boolean = true,
                                 isLoading = false
                                 if (task.isSuccessful) {
                                     val uid = auth.currentUser?.uid.orEmpty()
-                                    val user = mapOf("Nome" to name, "Verificado" to false)
 
-                                    db?.collection("Users")
-                                        ?.document(uid)
-                                        ?.set(user)
+                                    val userRef = db?.collection("Users")?.document(uid)
+                                    //Adiciona as informações do usuário
+                                    userRef?.set(mapOf(
+                                        "Nome" to name,
+                                        "Verificado" to false
+                                    ))
                                         ?.addOnSuccessListener {
-                                            Toast.makeText(context, "Conta criada com sucesso!", Toast.LENGTH_SHORT).show()
-                                            Intent(context, LoginActivity::class.java).also {
-                                                context.startActivity(it)
+                                        val categoriasRef = userRef.collection("Categorias")
+
+                                        //Adiciona as categorias a uma coleção dentro da coleção do usuário
+                                        val tarefasCategorias = listOf(
+                                            categoriasRef.document().set(mapOf("Nome" to "Sites da Web")),
+                                            categoriasRef.document().set(mapOf("Nome" to "Aplicativos")),
+                                            categoriasRef.document().set(mapOf("Nome" to "Teclados de acesso físico"))
+                                        )
+
+                                        Tasks.whenAllComplete(tarefasCategorias)
+                                            .addOnSuccessListener {
+                                                isLoading = false
+                                                Toast.makeText(context, "Conta criada com sucesso!", Toast.LENGTH_SHORT).show()
+                                                Intent(context, LoginActivity::class.java).also {
+                                                    context.startActivity(it)
+                                                }
                                             }
-                                        }
-                                        ?.addOnFailureListener { e ->
-                                            Log.e("FIRESTORE", "Erro ao salvar no Firestore", e)
-                                            errorMessage = "Erro ao salvar dados no banco."
-                                        }
+                                            .addOnFailureListener { e ->
+                                                isLoading = false
+                                                errorMessage = "Erro ao salvar categorias: ${e.localizedMessage}"
+                                            }
+                                    }?.addOnFailureListener { e ->
+                                        isLoading = false
+                                        errorMessage = "Erro ao salvar dados no banco."
+                                    }
                                 } else {
+                                    isLoading = false
                                     errorMessage = task.exception?.message ?: "Erro ao criar conta."
                                 }
                             }
