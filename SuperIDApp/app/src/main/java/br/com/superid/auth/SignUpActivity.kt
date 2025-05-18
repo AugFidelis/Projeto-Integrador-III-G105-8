@@ -187,9 +187,18 @@ fun SignUpScreen(useFirebase: Boolean = true,
 
                                         //Adiciona as categorias a uma coleção dentro da coleção do usuário
                                         val tarefasCategorias = listOf(
-                                            categoriasRef.document().set(mapOf("Nome" to "Sites da Web")),
-                                            categoriasRef.document().set(mapOf("Nome" to "Aplicativos")),
-                                            categoriasRef.document().set(mapOf("Nome" to "Teclados de acesso físico"))
+                                            categoriasRef.document().set(mapOf(
+                                                "Nome" to "Sites da Web",
+                                                "DataCriacao" to com.google.firebase.Timestamp.now()
+                                            )),
+                                            categoriasRef.document().set(mapOf(
+                                                "Nome" to "Aplicativos",
+                                                "DataCriacao" to com.google.firebase.Timestamp.now()
+                                            )),
+                                            categoriasRef.document().set(mapOf(
+                                                "Nome" to "Teclados de acesso físico",
+                                                "DataCriacao" to com.google.firebase.Timestamp.now()
+                                            ))
                                         )
 
                                         Tasks.whenAllComplete(tarefasCategorias)
