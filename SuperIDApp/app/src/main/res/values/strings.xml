@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">SuperID</string>
+    <string name="title_activity_terms_of_use">TermsOfUseActivity</string>
+    <string name="title_activity_profile">ProfileActivity</string>
+    <string name="title_activity_edit_categories">EditCategoriesActivity</string>
+    <string name="title_activity_main">MainActivity</string>
+    <string name="title_activity_qr_scanner">QrScannerActivity</string>
+    <string name="title_activity_add_password">AddPasswordActivity</string>
+    <string name="title_activity_edit_password">EditPasswordActivity</string>
+    <string name="title_activity_login">LoginActivity</string>
+    <string name="title_activity_sign_up">SignUpActivity</string>
+    <string name="title_activity_recover_master_password">RecoverMasterPasswordActivity</string>
+    <string name="title_activity_reset_master_password">ResetMasterPasswordActivity</string>
+</resources>
