@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -38,6 +39,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFloatingActionButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -59,6 +61,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -189,7 +192,11 @@ fun MainScreen(modifier: Modifier = Modifier){
             .padding(innerPadding)
             .padding(bottom = screenHeight * 0.015f)
         ) {
+            var categorias by remember { mutableStateOf(listOf("Todas", "Sites da web", "Aplicativos", "Teclados de acesso físico")) }
+
             var mostrarDialogo by remember { mutableStateOf(false) }
+            var filtroSelecionado by remember { mutableStateOf("") }
+            var categoriaFiltrada by remember { mutableStateOf(categorias.first()) }
 
             Row(modifier = Modifier
                 .padding(screenHeight * 0.02f)
@@ -224,7 +231,33 @@ fun MainScreen(modifier: Modifier = Modifier){
                         ) {
                             Text("Selecione a categoria:")
 
-                            //Parte que puxa as categorias do firestore
+                            Spacer(modifier = Modifier.height(screenHeight*0.01f))
+
+                            LazyColumn(
+                                modifier = Modifier
+                                    .heightIn(max = 300.dp)
+                            ) {
+                                items(categorias){ categoria ->
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { filtroSelecionado = categoria }
+                                            .padding(vertical = 4.dp)
+                                    ) {
+                                        RadioButton(
+                                            selected = filtroSelecionado == categoria,
+                                            onClick = { filtroSelecionado = categoria }
+                                        )
+                                        Text(
+                                            text = categoria,
+                                            modifier = Modifier.padding(start = 8.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(screenHeight*0.01f))
 
                             Row(
                                 modifier = Modifier
@@ -237,6 +270,7 @@ fun MainScreen(modifier: Modifier = Modifier){
                                 Spacer(modifier = Modifier.width(screenWidth*0.01f))
                                 TextButton(
                                     onClick = {
+                                        categoriaFiltrada = filtroSelecionado
                                         mostrarDialogo = false
                                     }
                                 ) {
@@ -254,7 +288,8 @@ fun MainScreen(modifier: Modifier = Modifier){
                 val title: String,
                 val description: String,
                 val login: String,
-                val password: String
+                val password: String,
+                val category: String
             )
 
             //Cards de exemplo temporários, enquanto o firestore não é conectado
@@ -264,14 +299,16 @@ fun MainScreen(modifier: Modifier = Modifier){
                     title = "Exemplo 1",
                     description = "",
                     login = "email1@email.com",
-                    password = "senha123"
+                    password = "senha123",
+                    category = "Sites da web"
                 ),
                 ExampleCard(
                     id = 2,
                     title = "Exemplo 2",
                     description = "Descrição de tamanho normal",
                     login = "email2@email.com",
-                    password = "senha456"
+                    password = "senha456",
+                    category = "Aplicativos"
                 ),
                 ExampleCard(
                     id = 3,
@@ -281,7 +318,8 @@ fun MainScreen(modifier: Modifier = Modifier){
                             "Descrição muito grande! Descrição muito grande! " +
                             "Descrição muito grande! Descrição muito grande! ",
                     login = "email1@email.com",
-                    password = "senha789"
+                    password = "senha789",
+                    category = "Teclados de acesso físico"
                 ),
                 ExampleCard(
                     id = 3,
@@ -291,7 +329,8 @@ fun MainScreen(modifier: Modifier = Modifier){
                             "Descrição muito grande! Descrição muito grande! " +
                             "Descrição muito grande! Descrição muito grande! ",
                     login = "email1@email.com",
-                    password = "senha789"
+                    password = "senha789",
+                    category = "Sites da web"
                 ),
                 ExampleCard(
                     id = 3,
@@ -301,35 +340,22 @@ fun MainScreen(modifier: Modifier = Modifier){
                             "Descrição muito grande! Descrição muito grande! " +
                             "Descrição muito grande! Descrição muito grande! ",
                     login = "email1@email.com",
-                    password = "senha789"
+                    password = "senha789",
+                    category = "Teclados de acesso físico"
                 ),
-                ExampleCard(
-                    id = 3,
-                    title = "Exemplo 3",
-                    description = "Descrição muito grande! Descrição muito grande! Descrição muito grande! " +
-                            "Descrição muito grande! Descrição muito grande! Descrição muito grande! " +
-                            "Descrição muito grande! Descrição muito grande! " +
-                            "Descrição muito grande! Descrição muito grande! ",
-                    login = "email1@email.com",
-                    password = "senha789"
-                ),
-                ExampleCard(
-                    id = 3,
-                    title = "Exemplo 3",
-                    description = "Descrição muito grande! Descrição muito grande! Descrição muito grande! " +
-                            "Descrição muito grande! Descrição muito grande! Descrição muito grande! " +
-                            "Descrição muito grande! Descrição muito grande! " +
-                            "Descrição muito grande! Descrição muito grande! ",
-                    login = "email1@email.com",
-                    password = "senha789"
-                )
             )
+
+            val cardsFiltrados = if(categoriaFiltrada == "Todas"){
+                exampleCards
+            }else{
+                exampleCards.filter { it.category == categoriaFiltrada }
+            }
 
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
             ) {
-                items(exampleCards){ card ->
+                items(cardsFiltrados){ card ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
