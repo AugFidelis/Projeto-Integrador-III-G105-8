@@ -2,6 +2,7 @@ package br.com.superid.main
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -235,7 +236,35 @@ fun AddPasswordScreen(modifier: Modifier = Modifier){
 
             Button(
                 onClick = {
+                    if (categoriaSelecionada.isNullOrBlank() || nomeSenha.isBlank() || senha.isBlank()) {
 
+                        Toast.makeText(context, "Preencha todos os campos obrigatórios!", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+
+                    val novaSenha = hashMapOf(
+                        "categoria" to categoriaSelecionada,
+                        "nome" to nomeSenha,
+                        "login" to login.ifBlank { null },
+                        "senha" to senha,
+                        "descricao" to descricao.ifBlank { null },
+                        "dataCriacao" to com.google.firebase.Timestamp.now()
+                    )
+
+                    db.collection("Users")
+                        .document(uid)
+                        .collection("Senhas")
+                        .add(novaSenha)
+                        .addOnSuccessListener {
+                            Toast.makeText(context, "Senha salva com sucesso!", Toast.LENGTH_SHORT).show()
+
+                            Intent(context, MainActivity::class.java).also { //Volta para a tela inicial dps de criar a senha
+                                context.startActivity(it)
+                            }
+                        }
+                        .addOnFailureListener { e ->
+                            Toast.makeText(context, "Erro ao salvar senha: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
