@@ -47,6 +47,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,6 +71,9 @@ import br.com.superid.main.ui.theme.SuperIDTheme
 import br.com.superid.user.EditCategoriesActivity
 import br.com.superid.user.ProfileActivity
 import br.com.superid.user.WelcomeActivity
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -98,11 +102,49 @@ fun MainScreenApp() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(modifier: Modifier = Modifier){
+    val auth = Firebase.auth
+    val db = Firebase.firestore
+    val uid = auth.currentUser?.uid.orEmpty()
+
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val context = LocalContext.current
 
     var expanded by remember { mutableStateOf(false) }
+
+    var categorias by remember { mutableStateOf(listOf<String>()) }
+    var isLoadingCategorias by remember { mutableStateOf(false) }
+    var categoriasErro by remember { mutableStateOf<String?>(null) }
+
+    var mostrarDialogo by remember { mutableStateOf(false) }
+    var filtroSelecionado by remember { mutableStateOf("") }
+    var categoriaFiltrada by remember { mutableStateOf("Todas") }
+
+    LaunchedEffect(uid) {
+        if (uid.isNotBlank()) {
+            isLoadingCategorias = true
+            db.collection("Users")
+                .document(uid)
+                .collection("Categorias")
+                .orderBy("DataCriacao")
+                .get()
+                .addOnSuccessListener { result ->
+                    val nomes = result.mapNotNull { it.getString("Nome") }.toMutableList()
+                    if (!nomes.contains("Todas")) nomes.add(0, "Todas")
+                    categorias = nomes
+
+                    // Atualiza o filtro se necessário
+                    if (filtroSelecionado.isBlank()) filtroSelecionado = nomes.firstOrNull() ?: ""
+                    if (categoriaFiltrada.isBlank()) categoriaFiltrada = nomes.firstOrNull() ?: ""
+                    isLoadingCategorias = false
+                }
+                .addOnFailureListener { e ->
+                    categoriasErro = "Erro ao buscar categorias: ${e.localizedMessage}"
+                    isLoadingCategorias = false
+                    categorias = listOf("Todas")
+                }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -192,12 +234,6 @@ fun MainScreen(modifier: Modifier = Modifier){
             .padding(innerPadding)
             .padding(bottom = screenHeight * 0.015f)
         ) {
-            var categorias by remember { mutableStateOf(listOf("Todas", "Sites da web", "Aplicativos", "Teclados de acesso físico")) }
-
-            var mostrarDialogo by remember { mutableStateOf(false) }
-            var filtroSelecionado by remember { mutableStateOf("") }
-            var categoriaFiltrada by remember { mutableStateOf(categorias.first()) }
-
             Row(modifier = Modifier
                 .padding(screenHeight * 0.02f)
                 .clickable {
@@ -212,7 +248,7 @@ fun MainScreen(modifier: Modifier = Modifier){
 
                 Spacer(modifier = Modifier.width(screenWidth*0.015f))
 
-                Text("Categoria atual")
+                Text("Categoria atual: $categoriaFiltrada")
             }
 
             //Diálogo de categorias (falta conectar com o firestore para mostrar as categorias)
@@ -233,26 +269,31 @@ fun MainScreen(modifier: Modifier = Modifier){
 
                             Spacer(modifier = Modifier.height(screenHeight*0.01f))
 
-                            LazyColumn(
-                                modifier = Modifier
-                                    .heightIn(max = 300.dp)
-                            ) {
-                                items(categorias){ categoria ->
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable { filtroSelecionado = categoria }
-                                            .padding(vertical = 4.dp)
-                                    ) {
-                                        RadioButton(
-                                            selected = filtroSelecionado == categoria,
-                                            onClick = { filtroSelecionado = categoria }
-                                        )
-                                        Text(
-                                            text = categoria,
-                                            modifier = Modifier.padding(start = 8.dp)
-                                        )
+                            if (isLoadingCategorias) {
+                                Text("Carregando categorias...")
+                            } else if (categoriasErro != null) {
+                                Text(categoriasErro!!, color = Color.Red)
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier.heightIn(max = 300.dp)
+                                ) {
+                                    items(categorias) { categoria ->
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable { filtroSelecionado = categoria }
+                                                .padding(vertical = 4.dp)
+                                        ) {
+                                            RadioButton(
+                                                selected = filtroSelecionado == categoria,
+                                                onClick = { filtroSelecionado = categoria }
+                                            )
+                                            Text(
+                                                text = categoria,
+                                                modifier = Modifier.padding(start = 8.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
