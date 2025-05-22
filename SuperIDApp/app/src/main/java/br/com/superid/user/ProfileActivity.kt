@@ -80,22 +80,27 @@ class ProfileActivity : ComponentActivity() {
 @Composable
 fun ProfileScreen() {
     val context = LocalContext.current
+    val activity = context as? ComponentActivity
     val auth = FirebaseAuth.getInstance()
-    val firestore = FirebaseFirestore.getInstance()
-    val user = auth.currentUser
-    var displayName by remember { mutableStateOf("Carregando...") }
-    var email by remember { mutableStateOf("Carregando...") }
-    var isVerified by remember { mutableStateOf(false) }
+    val currentUser = auth.currentUser
+    val db = FirebaseFirestore.getInstance()
 
-    LaunchedEffect(user) {
-        user?.uid?.let { uid ->
-            firestore.collection("Users").document(uid).get()
+    var userName by remember { mutableStateOf("") }
+    var userEmail by remember { mutableStateOf("") }
+    var isEmailVerified by remember { mutableStateOf(currentUser?.isEmailVerified == true) }
+    var emailEnviado by remember { mutableStateOf(false) }
+
+    // Carrega os dados do usuário logado a partir do Firestore
+    LaunchedEffect(currentUser?.uid) {
+        currentUser?.uid?.let { uid ->
+            db.collection("Users").document(uid).get()
                 .addOnSuccessListener { document ->
-                    displayName = document.getString("name") ?: "Nome do usuário"
-                    email = document.getString("email") ?: "exemplo@email.com.br"
+                    if (document != null && document.exists()) {
+                        userName = document.getString("name") ?: "Nome não disponível"
+                        userEmail = document.getString("email") ?: "Email não disponível"
+                    }
                 }
         }
-        isVerified = user?.isEmailVerified == true
     }
 
     Scaffold(
@@ -104,14 +109,15 @@ fun ProfileScreen() {
                 title = { Text("Perfil") },
                 navigationIcon = {
                     IconButton(onClick = {
+                        // Voltar para MainActivity
                         context.startActivity(Intent(context, MainActivity::class.java))
-                        (context as? ComponentActivity)?.finish()
+                        activity?.finish()
                     }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Voltar")
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* Sem função por enquanto */ }) {
+                    IconButton(onClick = {}) {
                         Icon(Icons.Default.MoreVert, contentDescription = "Mais opções")
                     }
                 },
@@ -124,156 +130,182 @@ fun ProfileScreen() {
     ) { paddingValues ->
         Column(
             modifier = Modifier
-                .fillMaxSize()
                 .padding(paddingValues)
+                .fillMaxSize()
                 .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Image(
-                    painter = painterResource(id = R.drawable.superid_logo),
-                    contentDescription = "Logo SuperID",
-                    modifier = Modifier.height(100.dp)
-                )
+            Image(
+                painter = painterResource(id = R.drawable.superid_logo),
+                contentDescription = "Logo SUPERID",
+                modifier = Modifier.height(80.dp)
+            )
 
-                Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-                Text("Informações da conta", style = MaterialTheme.typography.titleMedium)
+            Text("Informações da conta", style = MaterialTheme.typography.titleMedium)
 
-                Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E))
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Nome: $displayName")
-                        Text("E-mail: $email")
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Status de verificação:")
-                        Text(
-                            text = if (isVerified) "Verificado" else "Não verificado [Verificar agora]",
-                            fontWeight = FontWeight.Bold,
-                            color = if (isVerified) Color.Green else MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-            }
-
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Button(
-                    onClick = {
-                        context.startActivity(Intent(context, ResetMasterPasswordActivity::class.java))
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 8.dp),
-                    shape = RoundedCornerShape(50)
-                ) {
-                    Text("Redefinir senha mestre")
-                }
-
-                OutlinedButton(
-                    onClick = {
-                        auth.signOut()
-                        context.startActivity(Intent(context, LoginActivity::class.java))
-                        (context as? ComponentActivity)?.finish()
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(50)
-                ) {
-                    Text("Sair da conta")
-                }
-            }
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ProfileScreenPreview() {
-    MaterialTheme {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("Perfil") },
-                    navigationIcon = {
-                        IconButton(onClick = {}) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Voltar")
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = {}) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Mais opções")
-                        }
-                    }
-                )
-            }
-        ) { paddingValues ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceBetween
+            // Card com nome, email e status de verificação
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E))
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Image(
-                        painter = painterResource(id = R.drawable.superid_logo),
-                        contentDescription = "Logo SuperID",
-                        modifier = Modifier.height(100.dp)
-                    )
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Nome: $userName")
+                    Text("E-mail: $userEmail")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Status de verificação:")
 
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    Text("Informações da conta", style = MaterialTheme.typography.titleMedium)
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E))
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Nome: João da Silva")
-                            Text("E-mail: joao@email.com")
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("Status de verificação:")
+                    if (isEmailVerified) {
+                        Text(
+                            "Verificado",
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Green
+                        )
+                    } else {
+                        Text(
+                            "Não verificado [Verificar agora]",
+                            modifier = Modifier.clickable {
+                                currentUser?.sendEmailVerification()
+                                    ?.addOnSuccessListener {
+                                        emailEnviado = true
+                                    }
+                                    ?.addOnFailureListener {
+                                        Toast.makeText(
+                                            context,
+                                            "Erro ao enviar o e-mail",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                            },
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        // Mostra mensagem apenas após envio
+                        if (emailEnviado) {
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Não verificado [Verificar agora]",
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
+                                "E-mail de verificação enviado!",
+                                fontSize = 12.sp,
+                                color = Color.Gray
                             )
                         }
                     }
                 }
+            }
 
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Button(
-                        onClick = {},
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp),
-                        shape = RoundedCornerShape(50)
-                    ) {
-                        Text("Redefinir senha mestre")
-                    }
+            Spacer(modifier = Modifier.weight(1f)) // empurra os botões para o final da tela
 
-                    OutlinedButton(
-                        onClick = {},
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(50)
-                    ) {
-                        Text("Sair da conta")
-                    }
-                }
+            //  Redefinir senha mestre (abre nova tela)
+            Button(
+                onClick = {
+                    context.startActivity(Intent(context, ResetMasterPasswordActivity::class.java))
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Redefinir senha mestre")
+            }
+
+            // Sair da conta (desloga e retorna para LoginActivity)
+            OutlinedButton(
+                onClick = {
+                    auth.signOut()
+                    context.startActivity(Intent(context, LoginActivity::class.java))
+                    activity?.finish()
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Sair da conta")
             }
         }
     }
 }
+
+
+
+@Preview(showSystemUi = true, showBackground = true)
+@Composable
+fun ProfileScreenPreview() {
+    SuperIDTheme {
+        FakeProfileScreen()
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FakeProfileScreen() {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Perfil") },
+                navigationIcon = {
+                    IconButton(onClick = {}) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Voltar")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .padding(paddingValues)
+                .fillMaxSize()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.superid_logo),
+                contentDescription = "Logo SUPERID",
+                modifier = Modifier.height(80.dp)
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text("Informações da conta", style = MaterialTheme.typography.titleMedium)
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Nome: João da Silva")
+                    Text("E-mail: joao@email.com")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Status de verificação:")
+                    Text(
+                        "Não verificado [Verificar agora]",
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "Email de verificação será enviado aqui",
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            Button(onClick = {}, modifier = Modifier.fillMaxWidth()) {
+                Text("Redefinir senha mestre")
+            }
+            OutlinedButton(onClick = {}, modifier = Modifier.fillMaxWidth()) {
+                Text("Sair da conta")
+            }
+        }
+    }
+}
+
 
