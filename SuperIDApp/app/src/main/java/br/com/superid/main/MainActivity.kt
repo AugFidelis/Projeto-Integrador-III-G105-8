@@ -162,7 +162,9 @@ fun MainScreen(modifier: Modifier = Modifier){
                 navigationIcon = {},
                 actions = {
                     IconButton(onClick = {
-
+                        Intent(context, AddPasswordActivity::class.java).also {
+                            context.startActivity(it)
+                        }
                     }) {
                         Icon(
                             imageVector = Icons.Default.Add,
@@ -412,6 +414,10 @@ fun MainScreen(modifier: Modifier = Modifier){
                                 fontSize = (screenHeight*0.02f).value.sp,
                                 fontWeight = FontWeight.SemiBold
                                 )
+
+                            Spacer(modifier = Modifier.height(screenHeight*0.01f))
+
+                            Text(text = "Categoria: ${card.category}")
 
                             Spacer(modifier = Modifier.height(screenHeight*0.01f))
 
