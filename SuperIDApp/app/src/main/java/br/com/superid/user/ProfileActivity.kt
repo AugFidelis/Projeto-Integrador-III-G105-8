@@ -55,7 +55,9 @@ import br.com.superid.auth.ResetMasterPasswordActivity
 import br.com.superid.main.MainActivity
 import br.com.superid.user.ui.theme.SuperIDTheme
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.ktx.Firebase
 
 
 class ProfileActivity : ComponentActivity() {
@@ -96,8 +98,8 @@ fun ProfileScreen() {
             db.collection("Users").document(uid).get()
                 .addOnSuccessListener { document ->
                     if (document != null && document.exists()) {
-                        userName = document.getString("name") ?: "Nome não disponível"
-                        userEmail = document.getString("email") ?: "Email não disponível"
+                        userName = document.getString("Nome") ?: "Nome não disponível"
+                        userEmail = Firebase.auth.currentUser?.email ?: "E-mail não disponível"
                     }
                 }
         }
