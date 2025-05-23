@@ -81,22 +81,14 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             SuperIDTheme {
-                MainScreenApp()
+                MainScreen(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .wrapContentSize(Alignment.Center)
+                )
             }
         }
     }
-}
-
-@Preview(showBackground = true
-//    , device = "spec:width=800dp,height=1280dp,dpi=240"
-)
-@Composable
-fun MainScreenApp() {
-    MainScreen(
-        modifier = Modifier
-            .fillMaxSize()
-            .wrapContentSize(Alignment.Center)
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -120,6 +112,18 @@ fun MainScreen(modifier: Modifier = Modifier){
     var filtroSelecionado by remember { mutableStateOf("") }
     var categoriaFiltrada by remember { mutableStateOf("Todas") }
 
+    data class SenhaCard(
+        val title: String,
+        val description: String,
+        val login: String,
+        val password: String,
+        val category: String
+    )
+
+    var senhas by remember { mutableStateOf(listOf<SenhaCard>()) }
+    var isLoadingSenhas by remember { mutableStateOf(false) }
+    var senhasErro by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(uid) {
         if (uid.isNotBlank()) {
             isLoadingCategorias = true
@@ -142,6 +146,30 @@ fun MainScreen(modifier: Modifier = Modifier){
                     categoriasErro = "Erro ao buscar categorias: ${e.localizedMessage}"
                     isLoadingCategorias = false
                     categorias = listOf("Todas")
+                }
+
+            isLoadingSenhas = true
+            db.collection("Users").document(uid)
+                .collection("Senhas")
+                .orderBy("dataCriacao")
+                .get()
+                .addOnSuccessListener { result ->
+                    val listaSenhas = result.map { doc ->
+                        SenhaCard(
+                            title = doc.getString("nome") ?: "",
+                            description= doc.getString("descricao") ?: "",
+                            login= doc.getString("login") ?: "",
+                            password= doc.getString("senha") ?: "",
+                            category= doc.getString("categoria") ?: ""
+                        )
+                    }
+                    senhas = listaSenhas
+                    isLoadingSenhas = false
+                }
+                .addOnFailureListener { e ->
+                    senhasErro = "Erro ao buscar senhas: ${e.localizedMessage}"
+                    isLoadingSenhas = false
+                    senhas = emptyList()
                 }
         }
     }
@@ -253,7 +281,6 @@ fun MainScreen(modifier: Modifier = Modifier){
                 Text("Categoria atual: $categoriaFiltrada")
             }
 
-            //Diálogo de categorias (falta conectar com o firestore para mostrar as categorias)
             if (mostrarDialogo){
                 BasicAlertDialog(
                     modifier = Modifier
@@ -325,123 +352,92 @@ fun MainScreen(modifier: Modifier = Modifier){
                 }
             }
 
-
-            data class ExampleCard(
-                val id: Int,
-                val title: String,
-                val description: String,
-                val login: String,
-                val password: String,
-                val category: String
-            )
-
-            //Cards de exemplo temporários, enquanto o firestore não é conectado
-            val exampleCards = listOf(
-                ExampleCard(
-                    id = 1,
-                    title = "Exemplo 1",
-                    description = "",
-                    login = "email1@email.com",
-                    password = "senha123",
-                    category = "Sites da web"
-                ),
-                ExampleCard(
-                    id = 2,
-                    title = "Exemplo 2",
-                    description = "Descrição de tamanho normal",
-                    login = "email2@email.com",
-                    password = "senha456",
-                    category = "Aplicativos"
-                ),
-                ExampleCard(
-                    id = 3,
-                    title = "Exemplo 3",
-                    description = "Descrição muito grande! Descrição muito grande! Descrição muito grande! " +
-                            "Descrição muito grande! Descrição muito grande! Descrição muito grande! " +
-                            "Descrição muito grande! Descrição muito grande! " +
-                            "Descrição muito grande! Descrição muito grande! ",
-                    login = "email1@email.com",
-                    password = "senha789",
-                    category = "Teclados de acesso físico"
-                ),
-                ExampleCard(
-                    id = 3,
-                    title = "Exemplo 3",
-                    description = "Descrição muito grande! Descrição muito grande! Descrição muito grande! " +
-                            "Descrição muito grande! Descrição muito grande! Descrição muito grande! " +
-                            "Descrição muito grande! Descrição muito grande! " +
-                            "Descrição muito grande! Descrição muito grande! ",
-                    login = "email1@email.com",
-                    password = "senha789",
-                    category = "Sites da web"
-                ),
-                ExampleCard(
-                    id = 3,
-                    title = "Exemplo 3",
-                    description = "Descrição muito grande! Descrição muito grande! Descrição muito grande! " +
-                            "Descrição muito grande! Descrição muito grande! Descrição muito grande! " +
-                            "Descrição muito grande! Descrição muito grande! " +
-                            "Descrição muito grande! Descrição muito grande! ",
-                    login = "email1@email.com",
-                    password = "senha789",
-                    category = "Teclados de acesso físico"
-                ),
-            )
-
             val cardsFiltrados = if(categoriaFiltrada == "Todas"){
-                exampleCards
+                senhas
             }else{
-                exampleCards.filter { it.category == categoriaFiltrada }
+                senhas.filter { it.category == categoriaFiltrada }
             }
 
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-            ) {
-                items(cardsFiltrados){ card ->
-                    Card(
+            when {
+                isLoadingSenhas -> {
+                    // Mostra indicador de carregamento
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = screenHeight*0.01f)
-                            .padding(horizontal = screenHeight*0.02f)
-                            .align(alignment = Alignment.CenterHorizontally),
+                            .padding(top = screenHeight * 0.04f),
+                        horizontalArrangement = Arrangement.Center
                     ) {
-                        Column(
+                        androidx.compose.material3.CircularProgressIndicator()
+                    }
+                }
+                senhasErro != null -> {
+                    Text(
+                        senhasErro!!,
+                        color = Color.Red,
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .padding(top = screenHeight * 0.04f)
+                    )
+                }
+                else -> {
+                    if (senhas.isEmpty()) {
+                        Text(
+                            "Nenhuma senha cadastrada.",
                             modifier = Modifier
-                                .padding(screenWidth*0.03f)
-                        ) {
-                            Text(text = card.title,
-                                fontSize = (screenHeight*0.02f).value.sp,
-                                fontWeight = FontWeight.SemiBold
-                                )
+                                .align(Alignment.CenterHorizontally)
+                                .padding(top = screenHeight * 0.04f)
+                        )
+                    }
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                    ) {
+                        items(cardsFiltrados){ card ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = screenHeight*0.01f)
+                                    .padding(horizontal = screenHeight*0.02f)
+                                    .align(alignment = Alignment.CenterHorizontally),
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .padding(screenWidth*0.03f)
+                                ) {
+                                    Text(text = card.title,
+                                        fontSize = (screenHeight*0.02f).value.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
 
-                            Spacer(modifier = Modifier.height(screenHeight*0.01f))
+                                    Spacer(modifier = Modifier.height(screenHeight*0.01f))
 
-                            Text(text = "Categoria: ${card.category}")
+                                    Text(text = "Categoria: ${card.category}")
 
-                            Spacer(modifier = Modifier.height(screenHeight*0.01f))
+                                    Spacer(modifier = Modifier.height(screenHeight*0.01f))
 
-                            if(card.description.isNotEmpty()){
-                                Text(text = card.description)
+                                    if(card.description.isNotEmpty()){
+                                        Text(text = card.description)
 
-                                Spacer(modifier = Modifier.height(screenHeight*0.01f))
+                                        Spacer(modifier = Modifier.height(screenHeight*0.01f))
 
+                                    }
+
+                                    if(card.login.isNotEmpty()){
+                                        Text(text = "Login: ${card.login}")
+
+                                        Spacer(modifier = Modifier.height(screenHeight*0.005f))
+
+                                    }
+
+                                    Text(text = "Senha: ${card.password}")
+                                }
                             }
-
-                            if(card.login.isNotEmpty()){
-                                Text(text = "Login: ${card.login}")
-
-                                Spacer(modifier = Modifier.height(screenHeight*0.005f))
-
-                            }
-
-                            Text(text = "Senha: ${card.password}")
                         }
                     }
                 }
             }
-
-
         }
     }
 }
+
+
