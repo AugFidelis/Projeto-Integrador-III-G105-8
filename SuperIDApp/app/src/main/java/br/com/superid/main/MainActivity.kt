@@ -74,6 +74,8 @@ import br.com.superid.user.WelcomeActivity
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import br.com.superid.main.utils.KeyStoreHelper
+import br.com.superid.main.utils.Base64Utils
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -155,11 +157,37 @@ fun MainScreen(modifier: Modifier = Modifier){
                 .get()
                 .addOnSuccessListener { result ->
                     val listaSenhas = result.map { doc ->
+                        val senhaCriptografadaBase64 = doc.getString("senha") ?: ""
+                        val senhaDescriptografada = if(senhaCriptografadaBase64.isNotBlank())
+                        try {
+                            val senhaCriptografadaBytes = Base64Utils.decodeFromBase64(senhaCriptografadaBase64)
+                            val senhaBytes = KeyStoreHelper.decryptData(senhaCriptografadaBytes)
+                            String(senhaBytes, Charsets.UTF_8)
+                        } catch (e: Exception){
+                            "[Falha ao descriptografar]"
+                        }
+                        else{
+                            ""
+                        }
+
+                        val loginCriptografadoBase64 = doc.getString("login") ?: ""
+                        val loginDescriptografado = if (loginCriptografadoBase64.isNotBlank()) {
+                            try {
+                                val loginCriptografadoBytes = Base64Utils.decodeFromBase64(loginCriptografadoBase64)
+                                val loginBytes = KeyStoreHelper.decryptData(loginCriptografadoBytes)
+                                String(loginBytes, Charsets.UTF_8)
+                            } catch (e: Exception) {
+                                "[Falha ao descriptografar]"
+                            }
+                        } else {
+                            ""
+                        }
+
                         SenhaCard(
                             title = doc.getString("nome") ?: "",
                             description= doc.getString("descricao") ?: "",
-                            login= doc.getString("login") ?: "",
-                            password= doc.getString("senha") ?: "",
+                            login= loginDescriptografado,
+                            password= senhaDescriptografada,
                             category= doc.getString("categoria") ?: ""
                         )
                     }

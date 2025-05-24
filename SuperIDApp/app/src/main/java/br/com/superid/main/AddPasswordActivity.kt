@@ -48,10 +48,13 @@ import br.com.superid.main.ui.theme.SuperIDTheme
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import br.com.superid.main.utils.KeyStoreHelper
+import br.com.superid.main.utils.Base64Utils
 
 class AddPasswordActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        KeyStoreHelper.createKeyIfNotExists() //Garante que a chave do keystore exista antes de criptografar
         enableEdgeToEdge()
         setContent {
             SuperIDTheme {
@@ -242,11 +245,19 @@ fun AddPasswordScreen(modifier: Modifier = Modifier){
                         return@Button
                     }
 
+                    val loginBytes = login.toByteArray(Charsets.UTF_8) //Converte o login do usuário para bytes pois o keystore trabalha com bytes
+                    val loginCriptografadoBytes = KeyStoreHelper.encryptData(loginBytes)
+                    val loginCriptografadoBase64 = Base64Utils.encodeToBase64(loginCriptografadoBytes)
+
+                    val senhaBytes = senha.toByteArray(Charsets.UTF_8) //Converte a senha para bytes
+                    val senhaCriptografadaBytes = KeyStoreHelper.encryptData(senhaBytes)
+                    val senhaCriptografadaBase64 = Base64Utils.encodeToBase64(senhaCriptografadaBytes)
+
                     val novaSenha = hashMapOf(
                         "categoria" to categoriaSelecionada,
                         "nome" to nomeSenha,
-                        "login" to login.ifBlank { null },
-                        "senha" to senha,
+                        "login" to loginCriptografadoBase64.ifBlank { null },
+                        "senha" to senhaCriptografadaBase64,
                         "descricao" to descricao.ifBlank { null },
                         "dataCriacao" to com.google.firebase.Timestamp.now()
                     )
