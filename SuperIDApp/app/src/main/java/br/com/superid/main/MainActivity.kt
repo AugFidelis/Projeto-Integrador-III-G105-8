@@ -2,12 +2,14 @@ package br.com.superid.main
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
@@ -115,6 +118,7 @@ fun MainScreen(modifier: Modifier = Modifier){
     var categoriaFiltrada by remember { mutableStateOf("Todas") }
 
     data class SenhaCard(
+        val id: String,
         val title: String,
         val description: String,
         val login: String,
@@ -125,6 +129,10 @@ fun MainScreen(modifier: Modifier = Modifier){
     var senhas by remember { mutableStateOf(listOf<SenhaCard>()) }
     var isLoadingSenhas by remember { mutableStateOf(false) }
     var senhasErro by remember { mutableStateOf<String?>(null) }
+
+    // Para controlar qual menu dropdown está aberto em cada card
+    var expandedCardMenuIndex by remember { mutableStateOf(-1) }
+    var confirmarExclusaoIndex by remember { mutableStateOf(-1) }
 
     LaunchedEffect(uid) {
         if (uid.isNotBlank()) {
@@ -184,6 +192,7 @@ fun MainScreen(modifier: Modifier = Modifier){
                         }
 
                         SenhaCard(
+                            id = doc.id,
                             title = doc.getString("nome") ?: "",
                             description= doc.getString("descricao") ?: "",
                             login= loginDescriptografado,
@@ -420,7 +429,8 @@ fun MainScreen(modifier: Modifier = Modifier){
                         modifier = Modifier
                             .fillMaxSize()
                     ) {
-                        items(cardsFiltrados){ card ->
+                        itemsIndexed(cardsFiltrados) { index, card ->
+                            var cardMenuExpanded by remember { mutableStateOf(false) }
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -432,12 +442,52 @@ fun MainScreen(modifier: Modifier = Modifier){
                                     modifier = Modifier
                                         .padding(screenWidth*0.03f)
                                 ) {
-                                    Text(text = card.title,
-                                        fontSize = (screenHeight*0.02f).value.sp,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = card.title,
+                                            fontSize = (screenHeight*0.02f).value.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Box{
+                                            IconButton(
+                                                onClick = { cardMenuExpanded = true },
+                                                modifier = Modifier
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.MoreVert,
+                                                    contentDescription = "Mais opções"
+                                                )
+                                            }
 
-                                    Spacer(modifier = Modifier.height(screenHeight*0.01f))
+                                            DropdownMenu(
+                                                expanded = cardMenuExpanded,
+                                                onDismissRequest = { cardMenuExpanded = false }
+                                            ) {
+                                                DropdownMenuItem(
+                                                    text = { Text("Modificar senha") },
+                                                    onClick = {
+                                                        cardMenuExpanded = false
+                                                        // Navegar para a tela de edição, passando o id do documento (card.id)
+                                                        Intent(context, EditPasswordActivity::class.java).apply {
+                                                            putExtra("passwordDocId", card.id)
+                                                        }.also {
+                                                            context.startActivity(it)
+                                                        }
+                                                    }
+                                                )
+                                                DropdownMenuItem(
+                                                    text = { Text("Excluir senha", color = Color.Red) },
+                                                    onClick = {
+                                                        cardMenuExpanded = false
+                                                        confirmarExclusaoIndex = index
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    //Spacer(modifier = Modifier.height(screenHeight*0.01f))
 
                                     Text(text = "Categoria: ${card.category}")
 
@@ -445,20 +495,51 @@ fun MainScreen(modifier: Modifier = Modifier){
 
                                     if(card.description.isNotEmpty()){
                                         Text(text = card.description)
-
                                         Spacer(modifier = Modifier.height(screenHeight*0.01f))
-
                                     }
 
                                     if(card.login.isNotEmpty()){
                                         Text(text = "Login: ${card.login}")
-
                                         Spacer(modifier = Modifier.height(screenHeight*0.005f))
-
                                     }
 
                                     Text(text = "Senha: ${card.password}")
                                 }
+                            }
+
+                            if (confirmarExclusaoIndex == index) {
+                                AlertDialog(
+                                    onDismissRequest = { confirmarExclusaoIndex = -1 },
+                                    title = { Text("Excluir senha") },
+                                    text = { Text("Tem certeza que deseja excluir essa senha?") },
+                                    confirmButton = {
+                                        TextButton(
+                                            onClick = {
+                                                confirmarExclusaoIndex = -1
+                                                // Excluir senha no Firestore
+                                                db.collection("Users").document(uid)
+                                                    .collection("Senhas")
+                                                    .document(card.id)
+                                                    .delete()
+                                                    .addOnSuccessListener {
+                                                        Toast.makeText(context, "Senha excluída com sucesso!", Toast.LENGTH_SHORT).show()
+                                                        // Remover da lista localmente sem recarregar tudo
+                                                        senhas = senhas.filter { it.id != card.id }
+                                                    }
+                                                    .addOnFailureListener { e ->
+                                                        Toast.makeText(context, "Erro ao excluir senha: ${e.message}", Toast.LENGTH_LONG).show()
+                                                    }
+                                            }
+                                        ) {
+                                            Text("Excluir", color = Color.Red)
+                                        }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { confirmarExclusaoIndex = -1 }) {
+                                            Text("Cancelar")
+                                        }
+                                    }
+                                )
                             }
                         }
                     }

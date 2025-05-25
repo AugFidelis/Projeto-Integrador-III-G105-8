@@ -113,7 +113,7 @@ fun AddPasswordScreen(modifier: Modifier = Modifier){
                     titleContentColor = Color.Black
                 ),
                 title = {
-                    Text("Editar categorias")
+                    Text("Adicionar senha")
                 },
                 navigationIcon = {
                     IconButton(onClick = {
@@ -155,12 +155,12 @@ fun AddPasswordScreen(modifier: Modifier = Modifier){
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(
-                    horizontal = screenWidth * 0.08f,
+                    horizontal = screenWidth * 0.05f,
                     vertical = screenHeight * 0.02f
                 )
         ) {
             // Categoria dropdown
-            Text("Categoria", modifier = Modifier.padding(bottom = screenHeight * 0.005f))
+            Text("Categoria", modifier = Modifier.padding(bottom = screenHeight * 0.002f))
             ExposedDropdownMenuBox(
                 expanded = expandedMenu,
                 onExpandedChange = { expandedMenu = !expandedMenu },
@@ -169,7 +169,7 @@ fun AddPasswordScreen(modifier: Modifier = Modifier){
                     value = categoriaSelecionada ?: "",
                     onValueChange = { },
                     readOnly = true,
-                    label = { Text("Escolha uma categoria") },
+                    label = {},
                     trailingIcon = {
                         TrailingIcon(expanded = expandedMenu)
                     },
