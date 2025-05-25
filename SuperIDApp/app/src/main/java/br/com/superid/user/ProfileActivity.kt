@@ -111,7 +111,6 @@ fun ProfileScreen() {
                 title = { Text("Perfil") },
                 navigationIcon = {
                     IconButton(onClick = {
-                        // Voltar para MainActivity
                         context.startActivity(Intent(context, MainActivity::class.java))
                         activity?.finish()
                     }) {
@@ -149,7 +148,6 @@ fun ProfileScreen() {
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Card com nome, email e status de verificação
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
@@ -168,40 +166,63 @@ fun ProfileScreen() {
                             color = Color.Green
                         )
                     } else {
-                        Text(
-                            "Não verificado [Verificar agora]",
-                            modifier = Modifier.clickable {
-                                currentUser?.sendEmailVerification()
-                                    ?.addOnSuccessListener {
-                                        emailEnviado = true
-                                    }
-                                    ?.addOnFailureListener {
-                                        Toast.makeText(
-                                            context,
-                                            "Erro ao enviar o e-mail",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                            },
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        // Mostra mensagem apenas após envio
-                        if (emailEnviado) {
-                            Spacer(modifier = Modifier.height(4.dp))
+                        Column {
                             Text(
-                                "E-mail de verificação enviado!",
-                                fontSize = 12.sp,
-                                color = Color.Gray
+                                "Não verificado [Verificar agora]",
+                                modifier = Modifier.clickable {
+                                    currentUser?.sendEmailVerification()
+                                        ?.addOnSuccessListener {
+                                            emailEnviado = true
+                                            Toast.makeText(
+                                                context,
+                                                "E-mail de verificação enviado!",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                        ?.addOnFailureListener {
+                                            Toast.makeText(
+                                                context,
+                                                "Erro ao enviar o e-mail",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                },
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
                             )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Button(
+                                onClick = {
+                                    currentUser?.reload()?.addOnSuccessListener {
+                                        isEmailVerified = currentUser.isEmailVerified
+                                        if (isEmailVerified) {
+                                            Toast.makeText(context, "Email verificado!", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(context, "Ainda não verificado.", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp)
+                            ) {
+                                Text("Atualizar status")
+                            }
+                            if (emailEnviado) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    "E-mail de verificação enviado!",
+                                    fontSize = 12.sp,
+                                    color = Color.Gray
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f)) // empurra os botões para o final da tela
+            Spacer(modifier = Modifier.weight(1f))
 
-            //  Redefinir senha mestre (abre nova tela)
             Button(
                 onClick = {
                     context.startActivity(Intent(context, ResetMasterPasswordActivity::class.java))
@@ -211,7 +232,6 @@ fun ProfileScreen() {
                 Text("Redefinir senha mestre")
             }
 
-            // Sair da conta (desloga e retorna para LoginActivity)
             OutlinedButton(
                 onClick = {
                     auth.signOut()
@@ -225,7 +245,6 @@ fun ProfileScreen() {
         }
     }
 }
-
 
 
 @Preview(showSystemUi = true, showBackground = true)
