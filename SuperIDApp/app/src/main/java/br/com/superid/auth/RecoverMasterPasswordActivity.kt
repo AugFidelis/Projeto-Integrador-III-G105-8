@@ -1,5 +1,7 @@
 package br.com.superid.auth
 
+import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,7 +21,13 @@ import androidx.compose.ui.unit.sp
 import br.com.superid.R
 import br.com.superid.auth.ui.theme.SuperIDTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
-
+import android.widget.Toast
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.ui.platform.LocalContext
+import br.com.superid.user.WelcomeActivity
+import com.google.firebase.auth.FirebaseAuth
 
 @OptIn(ExperimentalMaterial3Api::class)
 class RecoverMasterPasswordActivity : ComponentActivity() {
@@ -38,26 +46,53 @@ class RecoverMasterPasswordActivity : ComponentActivity() {
 @Composable
 fun RecoverMasterPasswordScreen() {
     var email by remember { mutableStateOf("") }
+    val context = LocalContext.current
+
+    var expanded by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Recuperar senha") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = Color.Black
+                ),
+                title = {
+                    Text("Termos de uso")
+                },
                 navigationIcon = {
-                    IconButton(onClick = { /* Voltar */ }) {
+                    IconButton(onClick = {
+                        Intent(context, LoginActivity::class.java).also{
+                            context.startActivity(it)
+                        }
+                    }) {
+//                        Image(painter = painterResource(R.drawable.returnarrow),
+//                            contentDescription = "Seta de retorno à tela anterior",
+//                            colorFilter = ColorFilter.tint(Color.Black)
+//                            )
                         Icon(
-                            painter = painterResource(id = R.drawable.ic_back),
-                            contentDescription = "Voltar",
-                            modifier = Modifier.size(24.dp)
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Seta de retorno à tela anterior"
                         )
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* Mais opções */ }) {
+                    IconButton(onClick = {
+                        expanded = !expanded
+                    }) {
                         Icon(
-                            painter = painterResource(id = R.drawable.ic_more),
-                            contentDescription = "Mais opções",
-                            modifier = Modifier.size(24.dp)
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Ícone de menu"
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Ativar modo claro") },
+                            onClick = {}
                         )
                     }
                 }
@@ -101,7 +136,7 @@ fun RecoverMasterPasswordScreen() {
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = {Text("exemplo@email.com")},
+                    label = { Text("exemplo@email.com") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     visualTransformation = VisualTransformation.None,
@@ -122,7 +157,37 @@ fun RecoverMasterPasswordScreen() {
 
                 Button(
                     onClick = {
-                        println("Enviando link para: $email")
+                        if (email.isNotEmpty()) {
+                            FirebaseAuth.getInstance().sendPasswordResetEmail(email)
+                                .addOnCompleteListener { task ->
+                                    if (task.isSuccessful) {
+                                        Toast.makeText(
+                                            context,
+                                            "Link de recuperação enviado para $email",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+
+                                        val intent = Intent(context, LoginActivity::class.java)
+                                        context.startActivity(intent)
+
+                                        if (context is Activity){
+                                            context.finish()
+                                        }
+                                    } else {
+                                        Toast.makeText(
+                                            context,
+                                            "Erro ao enviar o link. Verifique o email.",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                }
+                        } else {
+                            Toast.makeText(
+                                context,
+                                "Por favor, insira um email válido.",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -134,6 +199,7 @@ fun RecoverMasterPasswordScreen() {
         }
     )
 }
+
 
 @Preview(showBackground = true)
 @Composable
