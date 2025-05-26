@@ -79,6 +79,7 @@ import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import br.com.superid.main.utils.KeyStoreHelper
 import br.com.superid.main.utils.Base64Utils
+import br.com.superid.main.QrScannerActivity
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
