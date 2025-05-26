@@ -1,5 +1,6 @@
 package br.com.superid.auth
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -7,16 +8,22 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import br.com.superid.R
 import br.com.superid.auth.ui.theme.SuperIDTheme
+import br.com.superid.user.ProfileActivity
+import br.com.superid.user.WelcomeActivity
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 
@@ -40,6 +47,8 @@ fun ResetMasterPasswordScreen() {
     val auth = FirebaseAuth.getInstance()
     val user = auth.currentUser
 
+    var expanded by remember { mutableStateOf(false) }
+
     var currentPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
 
@@ -48,16 +57,46 @@ fun ResetMasterPasswordScreen() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Redefinir Senha") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = Color.Black
+                ),
+                title = {
+                    Text("Termos de uso")
+                },
                 navigationIcon = {
                     IconButton(onClick = {
-                        // Finaliza a tela
-                        (context as? ComponentActivity)?.finish()
+                        Intent(context, ProfileActivity::class.java).also{
+                            context.startActivity(it)
+                        }
+                    }) {
+//                        Image(painter = painterResource(R.drawable.returnarrow),
+//                            contentDescription = "Seta de retorno à tela anterior",
+//                            colorFilter = ColorFilter.tint(Color.Black)
+//                            )
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Seta de retorno à tela anterior"
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = {
+                        expanded = !expanded
                     }) {
                         Icon(
-                            painter = painterResource(id = R.drawable.ic_back),
-                            contentDescription = "Voltar",
-                            modifier = Modifier.size(24.dp)
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Ícone de menu"
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Ativar modo claro") },
+                            onClick = {}
                         )
                     }
                 }
