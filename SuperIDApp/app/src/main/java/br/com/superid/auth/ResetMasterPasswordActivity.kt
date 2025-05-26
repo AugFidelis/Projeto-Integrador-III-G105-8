@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import br.com.superid.R
 import br.com.superid.auth.ui.theme.SuperIDTheme
 import br.com.superid.user.ProfileActivity
-import br.com.superid.user.WelcomeActivity
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 
@@ -62,7 +61,7 @@ fun ResetMasterPasswordScreen() {
                     titleContentColor = Color.Black
                 ),
                 title = {
-                    Text("Termos de uso")
+                    Text("Redefinir Senha")
                 },
                 navigationIcon = {
                     IconButton(onClick = {
@@ -70,10 +69,6 @@ fun ResetMasterPasswordScreen() {
                             context.startActivity(it)
                         }
                     }) {
-//                        Image(painter = painterResource(R.drawable.returnarrow),
-//                            contentDescription = "Seta de retorno à tela anterior",
-//                            colorFilter = ColorFilter.tint(Color.Black)
-//                            )
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Seta de retorno à tela anterior"

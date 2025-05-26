@@ -17,11 +17,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -87,6 +90,8 @@ fun ProfileScreen() {
     val currentUser = auth.currentUser
     val db = FirebaseFirestore.getInstance()
 
+    var expanded by remember { mutableStateOf(false) }
+
     var userName by remember { mutableStateOf("") }
     var userEmail by remember { mutableStateOf("") }
     var isEmailVerified by remember { mutableStateOf(currentUser?.isEmailVerified == true) }
@@ -108,25 +113,49 @@ fun ProfileScreen() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Perfil") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = Color.Black
+                ),
+                title = {
+                    Text("Termos de uso")
+                },
                 navigationIcon = {
                     IconButton(onClick = {
-                        // Voltar para MainActivity
-                        context.startActivity(Intent(context, MainActivity::class.java))
-                        activity?.finish()
+                        Intent(context, MainActivity::class.java).also{
+                            context.startActivity(it)
+                        }
                     }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Voltar")
+//                        Image(painter = painterResource(R.drawable.returnarrow),
+//                            contentDescription = "Seta de retorno à tela anterior",
+//                            colorFilter = ColorFilter.tint(Color.Black)
+//                            )
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Seta de retorno à tela anterior"
+                        )
                     }
                 },
                 actions = {
-                    IconButton(onClick = {}) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Mais opções")
+                    IconButton(onClick = {
+                        expanded = !expanded
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Ícone de menu"
+                        )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Ativar modo claro") },
+                            onClick = {}
+                        )
+                    }
+                }
             )
         }
     ) { paddingValues ->
@@ -149,7 +178,6 @@ fun ProfileScreen() {
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Card com nome, email e status de verificação
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
@@ -168,40 +196,63 @@ fun ProfileScreen() {
                             color = Color.Green
                         )
                     } else {
-                        Text(
-                            "Não verificado [Verificar agora]",
-                            modifier = Modifier.clickable {
-                                currentUser?.sendEmailVerification()
-                                    ?.addOnSuccessListener {
-                                        emailEnviado = true
-                                    }
-                                    ?.addOnFailureListener {
-                                        Toast.makeText(
-                                            context,
-                                            "Erro ao enviar o e-mail",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                            },
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        // Mostra mensagem apenas após envio
-                        if (emailEnviado) {
-                            Spacer(modifier = Modifier.height(4.dp))
+                        Column {
                             Text(
-                                "E-mail de verificação enviado!",
-                                fontSize = 12.sp,
-                                color = Color.Gray
+                                "Não verificado [Verificar agora]",
+                                modifier = Modifier.clickable {
+                                    currentUser?.sendEmailVerification()
+                                        ?.addOnSuccessListener {
+                                            emailEnviado = true
+                                            Toast.makeText(
+                                                context,
+                                                "E-mail de verificação enviado!",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                        ?.addOnFailureListener {
+                                            Toast.makeText(
+                                                context,
+                                                "Erro ao enviar o e-mail",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                },
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
                             )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Button(
+                                onClick = {
+                                    currentUser?.reload()?.addOnSuccessListener {
+                                        isEmailVerified = currentUser.isEmailVerified
+                                        if (isEmailVerified) {
+                                            Toast.makeText(context, "Email verificado!", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(context, "Ainda não verificado.", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp)
+                            ) {
+                                Text("Atualizar status")
+                            }
+                            if (emailEnviado) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    "E-mail de verificação enviado!",
+                                    fontSize = 12.sp,
+                                    color = Color.Gray
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f)) // empurra os botões para o final da tela
+            Spacer(modifier = Modifier.weight(1f))
 
-            //  Redefinir senha mestre (abre nova tela)
             Button(
                 onClick = {
                     context.startActivity(Intent(context, ResetMasterPasswordActivity::class.java))
@@ -211,7 +262,6 @@ fun ProfileScreen() {
                 Text("Redefinir senha mestre")
             }
 
-            // Sair da conta (desloga e retorna para LoginActivity)
             OutlinedButton(
                 onClick = {
                     auth.signOut()
@@ -225,7 +275,6 @@ fun ProfileScreen() {
         }
     }
 }
-
 
 
 @Preview(showSystemUi = true, showBackground = true)
