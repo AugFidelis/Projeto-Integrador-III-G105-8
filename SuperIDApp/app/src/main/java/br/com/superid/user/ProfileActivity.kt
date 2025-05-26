@@ -17,11 +17,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -87,6 +90,8 @@ fun ProfileScreen() {
     val currentUser = auth.currentUser
     val db = FirebaseFirestore.getInstance()
 
+    var expanded by remember { mutableStateOf(false) }
+
     var userName by remember { mutableStateOf("") }
     var userEmail by remember { mutableStateOf("") }
     var isEmailVerified by remember { mutableStateOf(currentUser?.isEmailVerified == true) }
@@ -108,24 +113,49 @@ fun ProfileScreen() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Perfil") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = Color.Black
+                ),
+                title = {
+                    Text("Termos de uso")
+                },
                 navigationIcon = {
                     IconButton(onClick = {
-                        context.startActivity(Intent(context, MainActivity::class.java))
-                        activity?.finish()
+                        Intent(context, MainActivity::class.java).also{
+                            context.startActivity(it)
+                        }
                     }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Voltar")
+//                        Image(painter = painterResource(R.drawable.returnarrow),
+//                            contentDescription = "Seta de retorno à tela anterior",
+//                            colorFilter = ColorFilter.tint(Color.Black)
+//                            )
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Seta de retorno à tela anterior"
+                        )
                     }
                 },
                 actions = {
-                    IconButton(onClick = {}) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Mais opções")
+                    IconButton(onClick = {
+                        expanded = !expanded
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Ícone de menu"
+                        )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Ativar modo claro") },
+                            onClick = {}
+                        )
+                    }
+                }
             )
         }
     ) { paddingValues ->
