@@ -134,7 +134,11 @@ fun LoginScreen() {
                     )
 
                     // Link de "Esqueceu a senha?"
-                    TextButton(onClick = {}) {
+                    TextButton(onClick = {
+                        Intent(context, RecoverMasterPasswordActivity::class.java).also {
+                            context.startActivity(it)
+                        }
+                    }) {
                         Text("Esqueceu sua senha?")
                     }
 
