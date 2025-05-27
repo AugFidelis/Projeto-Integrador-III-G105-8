@@ -49,6 +49,8 @@ import com.google.firebase.ktx.Firebase
 import br.com.superid.auth.SessionManager
 import br.com.superid.utils.HelperCripto
 import java.nio.charset.StandardCharsets
+import java.security.SecureRandom
+import android.util.Base64
 
 class AddPasswordActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -258,13 +260,16 @@ fun AddPasswordScreen(modifier: Modifier = Modifier){
                     val senhaCriptografadaBytes = HelperCripto.encryptData(senhaBytes, secretKey)
                     val senhaCriptografadaBase64 = HelperCripto.encodeToBase64(senhaCriptografadaBytes)
 
+                    val accessToken = generateAccessToken()
+
                     val novaSenha = hashMapOf(
                         "Categoria" to categoriaSelecionada,
                         "Nome" to nomeSenha,
                         "Login" to loginCriptografadoBase64.ifBlank { null },
                         "SenhaCriptografada" to senhaCriptografadaBase64,
                         "Descricao" to descricao.ifBlank { null },
-                        "DataCriacao" to com.google.firebase.Timestamp.now()
+                        "DataCriacao" to com.google.firebase.Timestamp.now(),
+                        "accessToken" to accessToken
                     )
 
                     db.collection("Users")
@@ -290,4 +295,11 @@ fun AddPasswordScreen(modifier: Modifier = Modifier){
             }
         }
     }
+}
+
+fun generateAccessToken(): String {
+    val byteCount = 192 // 192 bytes = 256 caracteres base64 (aproximadamente, pois base64: (n*4)/3)
+    val randomBytes = ByteArray(byteCount)
+    SecureRandom().nextBytes(randomBytes)
+    return Base64.encodeToString(randomBytes, Base64.NO_WRAP).take(256)
 }

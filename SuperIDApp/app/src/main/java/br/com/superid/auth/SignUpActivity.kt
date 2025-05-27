@@ -25,6 +25,7 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import android.provider.Settings
 
 class SignUpActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -167,11 +168,17 @@ fun SignUpScreen(
                                     val salt = HelperCripto.generateSalt()
                                     val saltBase64 = HelperCripto.encodeToBase64(salt)
 
+                                    // PEGAR O ANDROID ID
+                                    val androidId = Settings.Secure.getString(
+                                        context.contentResolver,
+                                        Settings.Secure.ANDROID_ID
+                                    )
+
                                     userRef?.set(
                                         mapOf(
                                             "Nome" to name,
-                                            "Verificado" to false,
-                                            "salt" to saltBase64
+                                            "salt" to saltBase64,
+                                            "androidId" to androidId
                                         )
                                     )?.addOnSuccessListener {
                                         val categoriasRef = userRef.collection("Categorias")
