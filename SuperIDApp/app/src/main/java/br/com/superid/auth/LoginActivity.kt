@@ -20,22 +20,26 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import br.com.superid.R
 import br.com.superid.utils.HelperCripto
-import br.com.superid.auth.SessionManager  // <--- Importa o singleton da pasta auth
+import br.com.superid.auth.SessionManager
 import br.com.superid.main.MainActivity
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import br.com.superid.ui.theme.SuperIDTheme
+
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            LoginScreen(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .wrapContentSize(Alignment.Center)
-            )
+            SuperIDTheme{
+                LoginScreen(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .wrapContentSize(Alignment.Center)
+                )
+            }
         }
     }
 }

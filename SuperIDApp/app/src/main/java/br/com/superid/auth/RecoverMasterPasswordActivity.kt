@@ -19,7 +19,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.superid.R
-import br.com.superid.auth.ui.theme.SuperIDTheme
+import br.com.superid.ui.theme.SuperIDTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import android.widget.Toast
 import androidx.compose.material.icons.Icons

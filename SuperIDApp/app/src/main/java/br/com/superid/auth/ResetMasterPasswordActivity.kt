@@ -21,7 +21,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import br.com.superid.R
-import br.com.superid.auth.ui.theme.SuperIDTheme
+import br.com.superid.ui.theme.SuperIDTheme
 import br.com.superid.user.ProfileActivity
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
