@@ -16,19 +16,19 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import br.com.superid.main.ui.theme.SuperIDTheme
-import br.com.superid.main.utils.KeyStoreHelper
-import br.com.superid.main.utils.Base64Utils
+import br.com.superid.auth.SessionManager
+import br.com.superid.utils.HelperCripto
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
+import java.nio.charset.StandardCharsets
 
 class EditPasswordActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        KeyStoreHelper.createKeyIfNotExists()
         enableEdgeToEdge()
         setContent {
             SuperIDTheme {
@@ -50,7 +50,8 @@ class EditPasswordActivity : ComponentActivity() {
 fun EditPasswordScreen(docId: String, modifier: Modifier = Modifier) {
     val auth = Firebase.auth
     val db = Firebase.firestore
-    val uid = auth.currentUser?.uid.orEmpty()
+    val uid = SessionManager.currentUid ?: auth.currentUser?.uid.orEmpty()
+    val secretKey = SessionManager.secretKey
 
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
@@ -85,36 +86,36 @@ fun EditPasswordScreen(docId: String, modifier: Modifier = Modifier) {
     }
 
     // Carregar dados da senha para edição
-    LaunchedEffect(docId, uid) {
-        if (docId.isNotBlank() && uid.isNotBlank()) {
+    LaunchedEffect(docId, uid, secretKey) {
+        if (docId.isNotBlank() && uid.isNotBlank() && secretKey != null) {
             db.collection("Users")
                 .document(uid)
                 .collection("Senhas")
                 .document(docId)
                 .get()
                 .addOnSuccessListener { doc ->
-                    categoriaSelecionada = doc.getString("categoria")
-                    nomeSenha = doc.getString("nome") ?: ""
-                    descricao = doc.getString("descricao") ?: ""
-                    dataCriacao = doc.getTimestamp("dataCriacao") // Preserve original creation date
+                    categoriaSelecionada = doc.getString("Categoria")
+                    nomeSenha = doc.getString("Nome") ?: ""
+                    descricao = doc.getString("Descricao") ?: ""
+                    dataCriacao = doc.getTimestamp("DataCriacao") // Preserve original creation date
 
-                    // Descriptografar login
-                    val loginCripto = doc.getString("login")
+                    // Descriptografar login (se criptografado)
+                    val loginCripto = doc.getString("Login")
                     login = if (!loginCripto.isNullOrBlank()) {
                         try {
-                            val bytes = Base64Utils.decodeFromBase64(loginCripto)
-                            String(KeyStoreHelper.decryptData(bytes), Charsets.UTF_8)
+                            val bytes = HelperCripto.decodeFromBase64(loginCripto)
+                            String(HelperCripto.decryptData(bytes, secretKey), Charsets.UTF_8)
                         } catch (e: Exception) {
                             ""
                         }
                     } else ""
 
                     // Descriptografar senha
-                    val senhaCripto = doc.getString("senha")
+                    val senhaCripto = doc.getString("SenhaCriptografada")
                     senha = if (!senhaCripto.isNullOrBlank()) {
                         try {
-                            val bytes = Base64Utils.decodeFromBase64(senhaCripto)
-                            String(KeyStoreHelper.decryptData(bytes), Charsets.UTF_8)
+                            val bytes = HelperCripto.decodeFromBase64(senhaCripto)
+                            String(HelperCripto.decryptData(bytes, secretKey), Charsets.UTF_8)
                         } catch (e: Exception) {
                             ""
                         }
@@ -126,6 +127,9 @@ fun EditPasswordScreen(docId: String, modifier: Modifier = Modifier) {
                     Toast.makeText(context, "Erro ao carregar senha", Toast.LENGTH_SHORT).show()
                     isLoading = false
                 }
+        } else if (secretKey == null) {
+            Toast.makeText(context, "Sessão expirada. Faça login novamente.", Toast.LENGTH_LONG).show()
+            isLoading = false
         }
     }
 
@@ -269,25 +273,32 @@ fun EditPasswordScreen(docId: String, modifier: Modifier = Modifier) {
                         Toast.makeText(context, "Preencha todos os campos obrigatórios!", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
+                    if (secretKey == null) {
+                        Toast.makeText(context, "Sessão expirada. Faça login novamente.", Toast.LENGTH_LONG).show()
+                        return@Button
+                    }
 
-                    val loginBytes = login.toByteArray(Charsets.UTF_8)
-                    val loginCriptografadoBytes = KeyStoreHelper.encryptData(loginBytes)
-                    val loginCriptografadoBase64 = Base64Utils.encodeToBase64(loginCriptografadoBytes)
+                    // Criptografa login e senha (se login não estiver vazio)
+                    val loginCriptografadoBase64 = if (login.isNotBlank()) {
+                        val loginBytes = login.toByteArray(StandardCharsets.UTF_8)
+                        val loginCriptografadoBytes = HelperCripto.encryptData(loginBytes, secretKey)
+                        HelperCripto.encodeToBase64(loginCriptografadoBytes)
+                    } else ""
 
-                    val senhaBytes = senha.toByteArray(Charsets.UTF_8)
-                    val senhaCriptografadaBytes = KeyStoreHelper.encryptData(senhaBytes)
-                    val senhaCriptografadaBase64 = Base64Utils.encodeToBase64(senhaCriptografadaBytes)
+                    val senhaBytes = senha.toByteArray(StandardCharsets.UTF_8)
+                    val senhaCriptografadaBytes = HelperCripto.encryptData(senhaBytes, secretKey)
+                    val senhaCriptografadaBase64 = HelperCripto.encodeToBase64(senhaCriptografadaBytes)
 
                     val novaSenha = mutableMapOf<String, Any?>(
-                        "categoria" to categoriaSelecionada,
-                        "nome" to nomeSenha,
-                        "login" to loginCriptografadoBase64.ifBlank { null },
-                        "senha" to senhaCriptografadaBase64,
-                        "descricao" to descricao.ifBlank { null }
+                        "Categoria" to categoriaSelecionada,
+                        "Nome" to nomeSenha,
+                        "Login" to loginCriptografadoBase64.ifBlank { null },
+                        "SenhaCriptografada" to senhaCriptografadaBase64,
+                        "Descricao" to descricao.ifBlank { null }
                     )
 
-                    // Só inclui dataCriacao se não for null
-                    dataCriacao?.let { novaSenha["dataCriacao"] = it }
+                    // Só inclui DataCriacao se não for null
+                    dataCriacao?.let { novaSenha["DataCriacao"] = it }
 
                     db.collection("Users")
                         .document(uid)
