@@ -2,7 +2,6 @@ package br.com.superid.auth
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -11,7 +10,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,45 +17,34 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import br.com.superid.R
-import br.com.superid.auth.ui.theme.SuperIDTheme
-import com.google.android.gms.tasks.Task
+import br.com.superid.utils.HelperCripto
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import android.provider.Settings
 
 class SignUpActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SuperIDTheme {
-                SignUpScreen(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .wrapContentSize(Alignment.Center)
-                )
-            }
+            SignUpScreen(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .wrapContentSize(Alignment.Center)
+            )
         }
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun SignUpPreview(){
-    SignUpScreen(useFirebase = false,
-        modifier = Modifier
-        .fillMaxSize()
-        .wrapContentSize(Alignment.Center)
-    )
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SignUpScreen(useFirebase: Boolean = true,
+fun SignUpScreen(
+    useFirebase: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -175,30 +162,47 @@ fun SignUpScreen(useFirebase: Boolean = true,
                                 isLoading = false
                                 if (task.isSuccessful) {
                                     val uid = auth.currentUser?.uid.orEmpty()
-
                                     val userRef = db?.collection("Users")?.document(uid)
-                                    //Adiciona as informações do usuário
-                                    userRef?.set(mapOf(
-                                        "Nome" to name,
-                                        "Verificado" to false
-                                    ))
-                                        ?.addOnSuccessListener {
+
+                                    // === GERAR SALT E SALVAR JUNTO AO USUÁRIO ===
+                                    val salt = HelperCripto.generateSalt()
+                                    val saltBase64 = HelperCripto.encodeToBase64(salt)
+
+                                    // PEGAR O ANDROID ID
+                                    val androidId = Settings.Secure.getString(
+                                        context.contentResolver,
+                                        Settings.Secure.ANDROID_ID
+                                    )
+
+                                    userRef?.set(
+                                        mapOf(
+                                            "Nome" to name,
+                                            "salt" to saltBase64,
+                                            "androidId" to androidId
+                                        )
+                                    )?.addOnSuccessListener {
                                         val categoriasRef = userRef.collection("Categorias")
 
-                                        //Adiciona as categorias a uma coleção dentro da coleção do usuário
+                                        // Adiciona as categorias a uma coleção dentro da coleção do usuário
                                         val tarefasCategorias = listOf(
-                                            categoriasRef.document().set(mapOf(
-                                                "Nome" to "Sites da Web",
-                                                "DataCriacao" to com.google.firebase.Timestamp.now()
-                                            )),
-                                            categoriasRef.document().set(mapOf(
-                                                "Nome" to "Aplicativos",
-                                                "DataCriacao" to com.google.firebase.Timestamp.now()
-                                            )),
-                                            categoriasRef.document().set(mapOf(
-                                                "Nome" to "Teclados de acesso físico",
-                                                "DataCriacao" to com.google.firebase.Timestamp.now()
-                                            ))
+                                            categoriasRef.document().set(
+                                                mapOf(
+                                                    "Nome" to "Sites da Web",
+                                                    "DataCriacao" to com.google.firebase.Timestamp.now()
+                                                )
+                                            ),
+                                            categoriasRef.document().set(
+                                                mapOf(
+                                                    "Nome" to "Aplicativos",
+                                                    "DataCriacao" to com.google.firebase.Timestamp.now()
+                                                )
+                                            ),
+                                            categoriasRef.document().set(
+                                                mapOf(
+                                                    "Nome" to "Teclados de acesso físico",
+                                                    "DataCriacao" to com.google.firebase.Timestamp.now()
+                                                )
+                                            )
                                         )
 
                                         Tasks.whenAllComplete(tarefasCategorias)
@@ -234,7 +238,3 @@ fun SignUpScreen(useFirebase: Boolean = true,
         }
     }
 }
-
-
-
-

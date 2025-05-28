@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -42,19 +41,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import br.com.superid.main.ui.theme.SuperIDTheme
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
-import br.com.superid.main.utils.KeyStoreHelper
-import br.com.superid.main.utils.Base64Utils
+import br.com.superid.auth.SessionManager
+import br.com.superid.utils.HelperCripto
+import java.nio.charset.StandardCharsets
+import java.security.SecureRandom
+import android.util.Base64
 
 class AddPasswordActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        KeyStoreHelper.createKeyIfNotExists() //Garante que a chave do keystore exista antes de criptografar
         enableEdgeToEdge()
         setContent {
             SuperIDTheme {
@@ -73,7 +73,8 @@ class AddPasswordActivity : ComponentActivity() {
 fun AddPasswordScreen(modifier: Modifier = Modifier){
     val auth = Firebase.auth
     val db = Firebase.firestore
-    val uid = auth.currentUser?.uid.orEmpty()
+    val uid = SessionManager.currentUid ?: auth.currentUser?.uid.orEmpty()
+    val secretKey = SessionManager.secretKey
 
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
@@ -240,26 +241,35 @@ fun AddPasswordScreen(modifier: Modifier = Modifier){
             Button(
                 onClick = {
                     if (categoriaSelecionada.isNullOrBlank() || nomeSenha.isBlank() || senha.isBlank()) {
-
                         Toast.makeText(context, "Preencha todos os campos obrigatórios!", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
+                    if (secretKey == null) {
+                        Toast.makeText(context, "Sessão expirada. Faça login novamente.", Toast.LENGTH_LONG).show()
+                        return@Button
+                    }
 
-                    val loginBytes = login.toByteArray(Charsets.UTF_8) //Converte o login do usuário para bytes pois o keystore trabalha com bytes
-                    val loginCriptografadoBytes = KeyStoreHelper.encryptData(loginBytes)
-                    val loginCriptografadoBase64 = Base64Utils.encodeToBase64(loginCriptografadoBytes)
+                    // Criptografa login e senha (se login não estiver vazio)
+                    val loginCriptografadoBase64 = if (login.isNotBlank()) {
+                        val loginBytes = login.toByteArray(StandardCharsets.UTF_8)
+                        val loginCriptografadoBytes = HelperCripto.encryptData(loginBytes, secretKey)
+                        HelperCripto.encodeToBase64(loginCriptografadoBytes)
+                    } else ""
 
-                    val senhaBytes = senha.toByteArray(Charsets.UTF_8) //Converte a senha para bytes
-                    val senhaCriptografadaBytes = KeyStoreHelper.encryptData(senhaBytes)
-                    val senhaCriptografadaBase64 = Base64Utils.encodeToBase64(senhaCriptografadaBytes)
+                    val senhaBytes = senha.toByteArray(StandardCharsets.UTF_8)
+                    val senhaCriptografadaBytes = HelperCripto.encryptData(senhaBytes, secretKey)
+                    val senhaCriptografadaBase64 = HelperCripto.encodeToBase64(senhaCriptografadaBytes)
+
+                    val accessToken = generateAccessToken()
 
                     val novaSenha = hashMapOf(
-                        "categoria" to categoriaSelecionada,
-                        "nome" to nomeSenha,
-                        "login" to loginCriptografadoBase64.ifBlank { null },
-                        "senha" to senhaCriptografadaBase64,
-                        "descricao" to descricao.ifBlank { null },
-                        "dataCriacao" to com.google.firebase.Timestamp.now()
+                        "Categoria" to categoriaSelecionada,
+                        "Nome" to nomeSenha,
+                        "Login" to loginCriptografadoBase64.ifBlank { null },
+                        "SenhaCriptografada" to senhaCriptografadaBase64,
+                        "Descricao" to descricao.ifBlank { null },
+                        "DataCriacao" to com.google.firebase.Timestamp.now(),
+                        "accessToken" to accessToken
                     )
 
                     db.collection("Users")
@@ -268,8 +278,7 @@ fun AddPasswordScreen(modifier: Modifier = Modifier){
                         .add(novaSenha)
                         .addOnSuccessListener {
                             Toast.makeText(context, "Senha salva com sucesso!", Toast.LENGTH_SHORT).show()
-
-                            Intent(context, MainActivity::class.java).also { //Volta para a tela inicial dps de criar a senha
+                            Intent(context, MainActivity::class.java).also {
                                 context.startActivity(it)
                             }
                         }
@@ -286,4 +295,11 @@ fun AddPasswordScreen(modifier: Modifier = Modifier){
             }
         }
     }
+}
+
+fun generateAccessToken(): String {
+    val byteCount = 192 // 192 bytes = 256 caracteres base64 (aproximadamente, pois base64: (n*4)/3)
+    val randomBytes = ByteArray(byteCount)
+    SecureRandom().nextBytes(randomBytes)
+    return Base64.encodeToString(randomBytes, Base64.NO_WRAP).take(256)
 }

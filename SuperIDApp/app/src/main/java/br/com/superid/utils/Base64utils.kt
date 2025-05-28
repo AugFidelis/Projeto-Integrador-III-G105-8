@@ -1,4 +1,4 @@
-package br.com.superid.main.utils
+package br.com.superid.utils
 
 import android.util.Base64
 
