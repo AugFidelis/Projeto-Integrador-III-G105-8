@@ -1,6 +1,7 @@
 package br.com.superid.auth
 
 import android.content.Intent
+import android.provider.Settings
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -26,7 +27,6 @@ import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import br.com.superid.ui.theme.SuperIDTheme
-
 
 class SignUpActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -171,11 +171,17 @@ fun SignUpScreen(
                                     val salt = HelperCripto.generateSalt()
                                     val saltBase64 = HelperCripto.encodeToBase64(salt)
 
+                                    // PEGAR O ANDROID ID
+                                    val androidId = Settings.Secure.getString(
+                                        context.contentResolver,
+                                        Settings.Secure.ANDROID_ID
+                                    )
+
                                     userRef?.set(
                                         mapOf(
                                             "Nome" to name,
-                                            "Verificado" to false,
-                                            "salt" to saltBase64
+                                            "salt" to saltBase64,
+                                            "androidId" to androidId
                                         )
                                     )?.addOnSuccessListener {
                                         val categoriasRef = userRef.collection("Categorias")
