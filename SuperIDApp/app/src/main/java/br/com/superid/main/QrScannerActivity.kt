@@ -37,11 +37,3 @@ fun Greeting6(name: String, modifier: Modifier = Modifier) {
         modifier = modifier
     )
 }
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview6() {
-    SuperIDTheme {
-        Greeting6("Android")
-    }
-}
