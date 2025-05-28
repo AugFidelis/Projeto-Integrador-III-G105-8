@@ -61,7 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.superid.R
 import br.com.superid.auth.LoginActivity
-import br.com.superid.user.ui.theme.SuperIDTheme
+import br.com.superid.ui.theme.SuperIDTheme
 import kotlin.math.roundToInt
 
 class WelcomeActivity : ComponentActivity() {

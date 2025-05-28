@@ -29,7 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.superid.R
-import br.com.superid.main.ui.theme.SuperIDTheme
+import br.com.superid.ui.theme.SuperIDTheme
 import br.com.superid.user.EditCategoriesActivity
 import br.com.superid.user.ProfileActivity
 import br.com.superid.user.WelcomeActivity

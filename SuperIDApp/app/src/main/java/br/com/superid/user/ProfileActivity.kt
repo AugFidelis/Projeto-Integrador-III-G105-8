@@ -56,7 +56,7 @@ import br.com.superid.R
 import br.com.superid.auth.LoginActivity
 import br.com.superid.auth.ResetMasterPasswordActivity
 import br.com.superid.main.MainActivity
-import br.com.superid.user.ui.theme.SuperIDTheme
+import br.com.superid.ui.theme.SuperIDTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FirebaseFirestore

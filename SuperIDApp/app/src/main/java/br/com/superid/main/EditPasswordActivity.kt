@@ -15,7 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import br.com.superid.main.ui.theme.SuperIDTheme
+import br.com.superid.ui.theme.SuperIDTheme
 import br.com.superid.auth.SessionManager
 import br.com.superid.utils.HelperCripto
 import com.google.firebase.auth.ktx.auth
