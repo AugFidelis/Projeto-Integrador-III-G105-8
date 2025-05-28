@@ -177,6 +177,8 @@ fun MainScreen(modifier: Modifier = Modifier){
         }
     }
 
+    val isEmailVerified = auth.currentUser?.isEmailVerified
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -245,8 +247,13 @@ fun MainScreen(modifier: Modifier = Modifier){
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                    Intent(context, QrScannerActivity::class.java).also {
-                        context.startActivity(it)
+                    if(isEmailVerified == true) {
+                        Intent(context, QrScannerActivity::class.java).also {
+                            context.startActivity(it)
+                        }
+                    }else{
+                        Toast.makeText(context, "Verifique seu e-mail para usar este recurso!", Toast.LENGTH_LONG)
+                            .show()
                     }
                 },
                 modifier = Modifier.size(screenWidth*0.2f)
