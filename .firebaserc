@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "teste-qrcode-e7574",
+    "e.g. staging": "teste-qrcode-e7574"
+  },
+  "targets": {},
+  "etags": {}
+}
