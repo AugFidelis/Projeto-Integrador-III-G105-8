@@ -106,6 +106,7 @@ val unspecified_scheme = ColorFamily(
 @Composable
 fun SuperIDTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    // isSystemInDarkTheme()
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = false,
     content: @Composable() () -> Unit

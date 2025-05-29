@@ -183,13 +183,12 @@ fun MainScreen(modifier: Modifier = Modifier){
         topBar = {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = Color.Black
+                    containerColor = MaterialTheme.colorScheme.background
                 ),
                 title = {
                     Image(painter = painterResource(R.drawable.superid_basic_logo),
                         contentDescription = "Logo do aplicativo",
-                        colorFilter = ColorFilter.tint(Color.Black)
+                        colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary)
                     )
                 },
                 navigationIcon = {},
@@ -282,7 +281,7 @@ fun MainScreen(modifier: Modifier = Modifier){
             ) {
                 Image(painter = painterResource(R.drawable.filter_list),
                     contentDescription = null,
-                    colorFilter = ColorFilter.tint(Color.Black)
+                    colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary)
                 )
 
                 Spacer(modifier = Modifier.width(screenWidth*0.015f))

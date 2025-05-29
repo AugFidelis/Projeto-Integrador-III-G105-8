@@ -11,14 +11,20 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import br.com.superid.R
 import br.com.superid.utils.HelperCripto
 import com.google.android.gms.tasks.Tasks
@@ -61,6 +67,11 @@ fun SignUpScreen(
     val auth = if (useFirebase) Firebase.auth else null
     val db = if (useFirebase) Firebase.firestore else null
 
+    var expanded by remember { mutableStateOf(false) }
+
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -76,6 +87,26 @@ fun SignUpScreen(
                             contentDescription = "Voltar"
                         )
                     }
+                },
+                actions = {
+                    IconButton(onClick = {
+                        expanded = !expanded
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Ícone de menu"
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Ativar modo claro") },
+                            onClick = {}
+                        )
+                    }
                 }
             )
         },
@@ -85,19 +116,28 @@ fun SignUpScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(24.dp),
-            verticalArrangement = Arrangement.Center
+                .padding(bottom = screenHeight*0.015f)
+                .padding(horizontal = screenWidth*0.05f),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
             Image(
                 painter = painterResource(id = R.drawable.superid_logo),
                 contentDescription = "Logo SuperID",
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(100.dp)
+                    .size(screenHeight*0.25f),
+                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary)
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(screenHeight * 0.01f))
+
+            Text(
+                text = "Insira os dados da conta:",
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+                fontSize = (screenHeight * 0.02f).value.sp,
+                lineHeight = (screenHeight * 0.03f).value.sp
+            )
 
             OutlinedTextField(
                 value = name,
@@ -139,104 +179,109 @@ fun SignUpScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(screenHeight*0.025f))
 
             errorMessage?.let {
-                Text(it, color = MaterialTheme.colorScheme.error)
-                Spacer(modifier = Modifier.height(8.dp))
+                Text(it, color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center)
             }
 
-            Button(
-                onClick = {
-                    if (name.isBlank() || email.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
-                        errorMessage = "Preencha todos os campos."
-                        return@Button
-                    }
+            Box(modifier = Modifier.fillMaxSize()){
+                Button(
+                    onClick = {
+                        if (name.isBlank() || email.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
+                            errorMessage = "Preencha todos os campos."
+                            return@Button
+                        }
 
-                    if (password != confirmPassword) {
-                        errorMessage = "As senhas não coincidem."
-                        return@Button
-                    }
+                        if (password != confirmPassword) {
+                            errorMessage = "As senhas não coincidem."
+                            return@Button
+                        }
 
-                    if (useFirebase) {
-                        isLoading = true
-                        auth?.createUserWithEmailAndPassword(email, password)
-                            ?.addOnCompleteListener { task ->
-                                isLoading = false
-                                if (task.isSuccessful) {
-                                    val uid = auth.currentUser?.uid.orEmpty()
-                                    val userRef = db?.collection("Users")?.document(uid)
+                        if (useFirebase) {
+                            isLoading = true
+                            auth?.createUserWithEmailAndPassword(email, password)
+                                ?.addOnCompleteListener { task ->
+                                    isLoading = false
+                                    if (task.isSuccessful) {
+                                        val uid = auth.currentUser?.uid.orEmpty()
+                                        val userRef = db?.collection("Users")?.document(uid)
 
-                                    // === GERAR SALT E SALVAR JUNTO AO USUÁRIO ===
-                                    val salt = HelperCripto.generateSalt()
-                                    val saltBase64 = HelperCripto.encodeToBase64(salt)
+                                        // === GERAR SALT E SALVAR JUNTO AO USUÁRIO ===
+                                        val salt = HelperCripto.generateSalt()
+                                        val saltBase64 = HelperCripto.encodeToBase64(salt)
 
-                                    // PEGAR O ANDROID ID
-                                    val androidId = Settings.Secure.getString(
-                                        context.contentResolver,
-                                        Settings.Secure.ANDROID_ID
-                                    )
-
-                                    userRef?.set(
-                                        mapOf(
-                                            "Nome" to name,
-                                            "salt" to saltBase64,
-                                            "androidId" to androidId
+                                        // PEGAR O ANDROID ID
+                                        val androidId = Settings.Secure.getString(
+                                            context.contentResolver,
+                                            Settings.Secure.ANDROID_ID
                                         )
-                                    )?.addOnSuccessListener {
-                                        val categoriasRef = userRef.collection("Categorias")
 
-                                        // Adiciona as categorias a uma coleção dentro da coleção do usuário
-                                        val tarefasCategorias = listOf(
-                                            categoriasRef.document().set(
-                                                mapOf(
-                                                    "Nome" to "Sites da Web",
-                                                    "DataCriacao" to com.google.firebase.Timestamp.now()
-                                                )
-                                            ),
-                                            categoriasRef.document().set(
-                                                mapOf(
-                                                    "Nome" to "Aplicativos",
-                                                    "DataCriacao" to com.google.firebase.Timestamp.now()
-                                                )
-                                            ),
-                                            categoriasRef.document().set(
-                                                mapOf(
-                                                    "Nome" to "Teclados de acesso físico",
-                                                    "DataCriacao" to com.google.firebase.Timestamp.now()
+                                        userRef?.set(
+                                            mapOf(
+                                                "Nome" to name,
+                                                "salt" to saltBase64,
+                                                "androidId" to androidId
+                                            )
+                                        )?.addOnSuccessListener {
+                                            val categoriasRef = userRef.collection("Categorias")
+
+                                            // Adiciona as categorias a uma coleção dentro da coleção do usuário
+                                            val tarefasCategorias = listOf(
+                                                categoriasRef.document().set(
+                                                    mapOf(
+                                                        "Nome" to "Sites da Web",
+                                                        "DataCriacao" to com.google.firebase.Timestamp.now()
+                                                    )
+                                                ),
+                                                categoriasRef.document().set(
+                                                    mapOf(
+                                                        "Nome" to "Aplicativos",
+                                                        "DataCriacao" to com.google.firebase.Timestamp.now()
+                                                    )
+                                                ),
+                                                categoriasRef.document().set(
+                                                    mapOf(
+                                                        "Nome" to "Teclados de acesso físico",
+                                                        "DataCriacao" to com.google.firebase.Timestamp.now()
+                                                    )
                                                 )
                                             )
-                                        )
 
-                                        Tasks.whenAllComplete(tarefasCategorias)
-                                            .addOnSuccessListener {
-                                                isLoading = false
-                                                Toast.makeText(context, "Conta criada com sucesso!", Toast.LENGTH_SHORT).show()
-                                                Intent(context, LoginActivity::class.java).also {
-                                                    context.startActivity(it)
+                                            Tasks.whenAllComplete(tarefasCategorias)
+                                                .addOnSuccessListener {
+                                                    isLoading = false
+                                                    Toast.makeText(context, "Conta criada com sucesso!", Toast.LENGTH_SHORT).show()
+                                                    Intent(context, LoginActivity::class.java).also {
+                                                        context.startActivity(it)
+                                                    }
                                                 }
-                                            }
-                                            .addOnFailureListener { e ->
-                                                isLoading = false
-                                                errorMessage = "Erro ao salvar categorias: ${e.localizedMessage}"
-                                            }
-                                    }?.addOnFailureListener { e ->
+                                                .addOnFailureListener { e ->
+                                                    isLoading = false
+                                                    errorMessage = "Erro ao salvar categorias: ${e.localizedMessage}"
+                                                }
+                                        }?.addOnFailureListener { e ->
+                                            isLoading = false
+                                            errorMessage = "Erro ao salvar dados no banco."
+                                        }
+                                    } else {
                                         isLoading = false
-                                        errorMessage = "Erro ao salvar dados no banco."
+                                        errorMessage = task.exception?.message ?: "Erro ao criar conta."
                                     }
-                                } else {
-                                    isLoading = false
-                                    errorMessage = task.exception?.message ?: "Erro ao criar conta."
                                 }
-                            }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                enabled = !isLoading
-            ) {
-                Text(text = if (isLoading) "Carregando..." else "Criar conta")
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(screenHeight*0.07f)
+                        .align(Alignment.BottomCenter),
+                    enabled = !isLoading
+                ) {
+                    Text(text = if (isLoading) "Carregando..." else "Criar conta",
+                        fontSize = (screenHeight*0.025f).value.sp
+                    )
+                }
             }
         }
     }
