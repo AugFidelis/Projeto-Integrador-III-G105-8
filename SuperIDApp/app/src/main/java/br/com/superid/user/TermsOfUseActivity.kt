@@ -64,7 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.superid.R
 import br.com.superid.auth.SignUpActivity
-import br.com.superid.user.ui.theme.SuperIDTheme
+import br.com.superid.ui.theme.SuperIDTheme
 
 class TermsOfUseActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,21 +72,13 @@ class TermsOfUseActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             SuperIDTheme {
-                TermsOfUseApp()
+                TermsOfUseScreen(modifier = Modifier
+                    .fillMaxSize()
+                    .wrapContentSize(Alignment.Center)
+                )
             }
         }
     }
-}
-
-@Preview(showBackground = true
-//    , device = "spec:width=800dp,height=1280dp,dpi=240"
-)
-@Composable
-fun TermsOfUseApp() {
-    TermsOfUseScreen(modifier = Modifier
-        .fillMaxSize()
-        .wrapContentSize(Alignment.Center)
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -102,22 +94,15 @@ fun TermsOfUseScreen(modifier: Modifier = Modifier) {
         topBar = {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = Color.Black
+                    containerColor = MaterialTheme.colorScheme.background,
                 ),
                 title = {
                     Text("Termos de uso")
                 },
                 navigationIcon = {
                     IconButton(onClick = {
-                        Intent(context, WelcomeActivity::class.java).also{
-                            context.startActivity(it)
-                        }
+                        (context as? ComponentActivity)?.finish()
                     }) {
-//                        Image(painter = painterResource(R.drawable.returnarrow),
-//                            contentDescription = "Seta de retorno à tela anterior",
-//                            colorFilter = ColorFilter.tint(Color.Black)
-//                            )
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Seta de retorno à tela anterior"
@@ -165,7 +150,7 @@ fun TermsOfUseScreen(modifier: Modifier = Modifier) {
                     text = "Por favor, leia os termos de uso do aplicativo antes de continuar:",
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center,
-                    fontSize = (screenHeight * 0.03f).value.sp,
+                    fontSize = (screenHeight * 0.025f).value.sp,
                     modifier = Modifier.padding(screenHeight * 0.03f),
                     lineHeight = (screenHeight * 0.03f).value.sp
                 )
@@ -273,26 +258,26 @@ fun TermsOfUseScreen(modifier: Modifier = Modifier) {
                                 .padding(horizontal = screenWidth * 0.02f)
                                 //.fillMaxWidth()
                                 .width(screenWidth * 0.85f)
-                                .height(screenHeight * 0.55f)
+                                .height(screenHeight * 0.6f)
                                 .align(alignment = Alignment.CenterHorizontally)
                         ) {
                             Column(
                                 horizontalAlignment = Alignment.Start,
-                                modifier = Modifier.padding(30.dp)
+                                modifier = Modifier.padding(screenWidth*0.05f)
                             ) {
                                 //Spacer(modifier = Modifier.height(screenHeight*0.005f))
 
                                 Text(
                                     text = card.title,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = (screenHeight * 0.025f).value.sp
+                                    fontSize = (screenHeight * 0.0225f).value.sp
                                 )
 
-                                Spacer(modifier = Modifier.height(screenHeight * 0.03f))
+                                Spacer(modifier = Modifier.height(screenHeight * 0.02f))
 
                                 Text(
                                     text = card.description,
-                                    fontSize = (screenHeight * 0.0175f).value.sp
+                                    fontSize = (screenHeight * 0.0165f).value.sp
                                 )
 
                                 Spacer(modifier = Modifier.height(screenHeight * 0.025f))
@@ -303,7 +288,7 @@ fun TermsOfUseScreen(modifier: Modifier = Modifier) {
                                         prefix = "• "
                                     ),
                                     modifier = Modifier.padding(horizontal = 16.dp),
-                                    fontSize = (screenHeight * 0.0155f).value.sp
+                                    fontSize = (screenHeight * 0.0145f).value.sp
                                 )
 
                             }
