@@ -1,5 +1,6 @@
 package br.com.superid.user
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -8,6 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,9 +46,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,6 +66,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import br.com.superid.R
 import br.com.superid.auth.SignUpActivity
 import br.com.superid.ui.theme.SuperIDTheme
@@ -71,10 +78,34 @@ class TermsOfUseActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SuperIDTheme {
+            val systemDark = isSystemInDarkTheme()
+            val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
+            var isDarkTheme by remember { mutableStateOf(prefs.getBoolean("is_dark_theme", systemDark)) }
+
+            val lifecycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME) {
+                        isDarkTheme = prefs.getBoolean("is_dark_theme", systemDark)
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
+            }
+
+            SuperIDTheme(
+                darkTheme = isDarkTheme
+            ) {
                 TermsOfUseScreen(modifier = Modifier
                     .fillMaxSize()
-                    .wrapContentSize(Alignment.Center)
+                    .wrapContentSize(),
+
+                    onToggleTheme = {
+                        isDarkTheme = !isDarkTheme
+                        prefs.edit().putBoolean("is_dark_theme", isDarkTheme).apply() },
+                    isDarkTheme = isDarkTheme
                 )
             }
         }
@@ -83,7 +114,11 @@ class TermsOfUseActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun TermsOfUseScreen(modifier: Modifier = Modifier) {
+fun TermsOfUseScreen(
+    onToggleTheme: () -> Unit,
+    isDarkTheme: Boolean,
+    modifier: Modifier = Modifier
+) {
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val context = LocalContext.current
@@ -124,8 +159,11 @@ fun TermsOfUseScreen(modifier: Modifier = Modifier) {
                         onDismissRequest = { expanded = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Ativar modo claro") },
-                            onClick = {}
+                            onClick = {
+                                onToggleTheme()
+                                expanded = false
+                            },
+                            text = { Text(if (isDarkTheme) "Ativar modo claro" else "Ativar modo escuro") }
                         )
                     }
                 }
@@ -141,9 +179,7 @@ fun TermsOfUseScreen(modifier: Modifier = Modifier) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    //.padding(bottom = 40.dp, top = screenHeight*0.03f)
                     .fillMaxWidth()
-                    //.padding(innerPadding)
                     .padding(bottom = screenHeight * 0.03f)
             ) {
                 Text(
@@ -256,7 +292,6 @@ fun TermsOfUseScreen(modifier: Modifier = Modifier) {
                         Card(
                             modifier = Modifier
                                 .padding(horizontal = screenWidth * 0.02f)
-                                //.fillMaxWidth()
                                 .width(screenWidth * 0.85f)
                                 .height(screenHeight * 0.6f)
                                 .align(alignment = Alignment.CenterHorizontally)
@@ -265,8 +300,6 @@ fun TermsOfUseScreen(modifier: Modifier = Modifier) {
                                 horizontalAlignment = Alignment.Start,
                                 modifier = Modifier.padding(screenWidth*0.05f)
                             ) {
-                                //Spacer(modifier = Modifier.height(screenHeight*0.005f))
-
                                 Text(
                                     text = card.title,
                                     fontWeight = FontWeight.Bold,
@@ -287,7 +320,7 @@ fun TermsOfUseScreen(modifier: Modifier = Modifier) {
                                         separator = "\n• ",
                                         prefix = "• "
                                     ),
-                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    modifier = Modifier.padding(horizontal = screenWidth*0.01f),
                                     fontSize = (screenHeight * 0.0145f).value.sp
                                 )
 

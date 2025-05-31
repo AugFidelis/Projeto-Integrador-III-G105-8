@@ -13,6 +13,7 @@ import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -66,16 +67,46 @@ import br.com.superid.ui.theme.SuperIDTheme
 import kotlin.math.roundToInt
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.saveable.rememberSaveable
+import android.content.Context
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 
 class WelcomeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SuperIDTheme {
+            val systemDark = isSystemInDarkTheme()
+            val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
+            var isDarkTheme by remember { mutableStateOf(prefs.getBoolean("is_dark_theme", systemDark)) }
+
+            val lifecycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME) {
+                        isDarkTheme = prefs.getBoolean("is_dark_theme", systemDark)
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
+            }
+
+            SuperIDTheme(
+                darkTheme = isDarkTheme
+            ) {
                 WelcomeScreen(modifier = Modifier
                     .fillMaxSize()
-                    .wrapContentSize()
+                    .wrapContentSize(),
+
+                    onToggleTheme = {
+                        isDarkTheme = !isDarkTheme
+                        prefs.edit().putBoolean("is_dark_theme", isDarkTheme).apply() },
+                    isDarkTheme = isDarkTheme
                 )
             }
         }
@@ -84,7 +115,11 @@ class WelcomeActivity : ComponentActivity() {
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun WelcomeScreen(modifier: Modifier = Modifier) {
+fun WelcomeScreen(
+    onToggleTheme: () -> Unit,
+    isDarkTheme: Boolean,
+    modifier: Modifier = Modifier
+) {
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     //Pega a altura e largura da tela em dp para incluir tamanhos consistentes com o tamanho da tela do dispositivo
@@ -107,8 +142,11 @@ fun WelcomeScreen(modifier: Modifier = Modifier) {
                             onDismissRequest = { expanded = false }
                         ) {
                             DropdownMenuItem(
-                                onClick = {},
-                                text = { Text("Ativar modo claro") }
+                                onClick = {
+                                    onToggleTheme()
+                                    expanded = false
+                                },
+                                text = { Text(if (isDarkTheme) "Ativar modo claro" else "Ativar modo escuro") }
                             )
                         }
                     }
@@ -125,11 +163,10 @@ fun WelcomeScreen(modifier: Modifier = Modifier) {
             Image(painter = painterResource(id = R.drawable.superid_logo),
                 contentDescription = "Logo SuperID",
                 colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
-                //colorFilter temporário, enquanto fundo escuro não é adicionado
                 modifier = Modifier.size(screenHeight*0.25f)
             )
 
-            Spacer(modifier = Modifier.weight(0.5f))
+            Spacer(modifier = Modifier.height(screenHeight*0.01f))
 
             //---------------------------------------------------------------------------------
 
@@ -183,13 +220,12 @@ fun WelcomeScreen(modifier: Modifier = Modifier) {
                 items(welcomeCards) { card ->
                     Card(modifier = Modifier
                         .padding(horizontal = screenWidth * 0.02f)
-                        //.fillMaxWidth()
                         .width(screenWidth * 0.85f)
                         .heightIn(max = screenHeight * 0.45f)
                         .align(alignment = Alignment.CenterHorizontally)
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(30.dp)
+                            modifier = Modifier.padding(screenWidth*0.075f)
                         ) {
                             Spacer(modifier = Modifier.weight(1f))
 
@@ -220,7 +256,7 @@ fun WelcomeScreen(modifier: Modifier = Modifier) {
             val context = LocalContext.current
 
             Column(
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(screenHeight*0.01f)
             ) {
                 Button(onClick = {
                     Intent(context, TermsOfUseActivity::class.java).also {

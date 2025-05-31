@@ -1,5 +1,6 @@
 package br.com.superid.auth
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -7,17 +8,26 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import br.com.superid.R
 import br.com.superid.utils.HelperCripto
 import br.com.superid.auth.SessionManager
@@ -33,11 +43,35 @@ class LoginActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SuperIDTheme{
+            val systemDark = isSystemInDarkTheme()
+            val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
+            var isDarkTheme by remember { mutableStateOf(prefs.getBoolean("is_dark_theme", systemDark)) }
+
+            val lifecycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME) {
+                        isDarkTheme = prefs.getBoolean("is_dark_theme", systemDark)
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
+            }
+
+            SuperIDTheme(
+                darkTheme = isDarkTheme
+            ) {
                 LoginScreen(
                     modifier = Modifier
                         .fillMaxSize()
-                        .wrapContentSize(Alignment.Center)
+                        .wrapContentSize(Alignment.Center),
+
+                    onToggleTheme = {
+                        isDarkTheme = !isDarkTheme
+                        prefs.edit().putBoolean("is_dark_theme", isDarkTheme).apply() },
+                    isDarkTheme = isDarkTheme
                 )
             }
         }
@@ -48,6 +82,8 @@ class LoginActivity : ComponentActivity() {
 @Composable
 fun LoginScreen(
     useFirebase: Boolean = true,
+    onToggleTheme: () -> Unit,
+    isDarkTheme: Boolean,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -58,6 +94,11 @@ fun LoginScreen(
 
     val auth = if (useFirebase) Firebase.auth else null
     val db = if (useFirebase) Firebase.firestore else null
+
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+
+    var expanded by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -74,6 +115,29 @@ fun LoginScreen(
                             contentDescription = "Voltar"
                         )
                     }
+                },
+                actions = {
+                    IconButton(onClick = {
+                        expanded = !expanded
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Ícone de menu"
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            onClick = {
+                                onToggleTheme()
+                                expanded = false
+                            },
+                            text = { Text(if (isDarkTheme) "Ativar modo claro" else "Ativar modo escuro") }
+                        )
+                    }
                 }
             )
         },
@@ -83,18 +147,19 @@ fun LoginScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(24.dp),
-            verticalArrangement = Arrangement.Center
+                .padding(bottom = screenHeight*0.015f)
+                .padding(horizontal = screenWidth*0.05f),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Image(
                 painter = painterResource(id = R.drawable.superid_logo),
                 contentDescription = "Logo SuperID",
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(100.dp)
+                    .size(screenHeight*0.25f),
+                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary)
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(screenHeight * 0.01f))
 
             OutlinedTextField(
                 value = email,
@@ -104,7 +169,6 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
 
             OutlinedTextField(
                 value = password,
@@ -115,12 +179,40 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(screenHeight*0.025f))
 
             errorMessage?.let {
                 Text(it, color = MaterialTheme.colorScheme.error)
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(screenHeight*0.025f))
             }
+
+            TextButton(
+                onClick = {
+//                    // Redefinição de senha via Firebase Auth
+//                    if (email.isBlank()) {
+//                        errorMessage = "Informe o e-mail para redefinir a senha."
+//                    } else {
+//                        isLoading = true
+//                        auth?.sendPasswordResetEmail(email)
+//                            ?.addOnCompleteListener { task ->
+//                                isLoading = false
+//                                if (task.isSuccessful) {
+//                                    Toast.makeText(context, "Verifique seu e-mail para redefinir a senha.", Toast.LENGTH_LONG).show()
+//                                } else {
+//                                    errorMessage = task.exception?.message ?: "Erro ao enviar e-mail de redefinição."
+//                                }
+//                            }
+//                    }
+
+                    Intent(context, RecoverMasterPasswordActivity::class.java).also {
+                        context.startActivity(it)
+                    }
+                }
+            ) {
+                Text("Esqueceu sua senha?")
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
 
             Button(
                 onClick = {
@@ -178,34 +270,11 @@ fun LoginScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp),
+                    .height(screenHeight*0.07f),
                 enabled = !isLoading
             ) {
-                Text(text = if (isLoading) "Carregando..." else "Entrar")
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            TextButton(
-                onClick = {
-                    // Redefinição de senha via Firebase Auth
-                    if (email.isBlank()) {
-                        errorMessage = "Informe o e-mail para redefinir a senha."
-                    } else {
-                        isLoading = true
-                        auth?.sendPasswordResetEmail(email)
-                            ?.addOnCompleteListener { task ->
-                                isLoading = false
-                                if (task.isSuccessful) {
-                                    Toast.makeText(context, "Verifique seu e-mail para redefinir a senha.", Toast.LENGTH_LONG).show()
-                                } else {
-                                    errorMessage = task.exception?.message ?: "Erro ao enviar e-mail de redefinição."
-                                }
-                            }
-                    }
-                }
-            ) {
-                Text("Esqueceu sua senha?")
+                Text(text = if (isLoading) "Carregando..." else "Entrar",
+                    fontSize = (screenHeight*0.025f).value.sp)
             }
         }
     }
