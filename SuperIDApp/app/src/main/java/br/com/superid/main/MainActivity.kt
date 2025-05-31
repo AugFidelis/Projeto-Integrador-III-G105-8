@@ -1,5 +1,6 @@
 package br.com.superid.main
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -8,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,6 +20,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -28,6 +31,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import br.com.superid.R
 import br.com.superid.ui.theme.SuperIDTheme
 import br.com.superid.user.EditCategoriesActivity
@@ -47,11 +53,35 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SuperIDTheme {
+            val systemDark = isSystemInDarkTheme()
+            val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
+            var isDarkTheme by remember { mutableStateOf(prefs.getBoolean("is_dark_theme", systemDark)) }
+
+            val lifecycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME) {
+                        isDarkTheme = prefs.getBoolean("is_dark_theme", systemDark)
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
+            }
+
+            SuperIDTheme(
+                darkTheme = isDarkTheme
+            ) {
                 MainScreen(
                     modifier = Modifier
                         .fillMaxSize()
-                        .wrapContentSize(Alignment.Center)
+                        .wrapContentSize(Alignment.Center),
+
+                    onToggleTheme = {
+                        isDarkTheme = !isDarkTheme
+                        prefs.edit().putBoolean("is_dark_theme", isDarkTheme).apply() },
+                    isDarkTheme = isDarkTheme
                 )
             }
         }
@@ -60,7 +90,11 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(modifier: Modifier = Modifier){
+fun MainScreen(
+    onToggleTheme: () -> Unit,
+    isDarkTheme: Boolean,
+    modifier: Modifier = Modifier
+){
     val auth = Firebase.auth
     val db = Firebase.firestore
     val uid = SessionManager.currentUid ?: auth.currentUser?.uid.orEmpty()
@@ -159,7 +193,7 @@ fun MainScreen(modifier: Modifier = Modifier){
 
                         SenhaCard(
                             id = doc.id,
-                            title = doc.getString("Categoria") ?: "",
+                            title = doc.getString("Nome") ?: "",
                             description= doc.getString("Descricao") ?: "",
                             login= loginDescriptografado,
                             password= senhaDescriptografada,
@@ -183,13 +217,12 @@ fun MainScreen(modifier: Modifier = Modifier){
         topBar = {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = Color.Black
+                    containerColor = MaterialTheme.colorScheme.background
                 ),
                 title = {
                     Image(painter = painterResource(R.drawable.superid_basic_logo),
                         contentDescription = "Logo do aplicativo",
-                        colorFilter = ColorFilter.tint(Color.Black)
+                        colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary)
                     )
                 },
                 navigationIcon = {},
@@ -237,8 +270,11 @@ fun MainScreen(modifier: Modifier = Modifier){
                         )
 
                         DropdownMenuItem(
-                            text = { Text("Ativar modo claro") },
-                            onClick = {}
+                            onClick = {
+                                onToggleTheme()
+                                expanded = false
+                            },
+                            text = { Text(if (isDarkTheme) "Ativar modo claro" else "Ativar modo escuro") }
                         )
                     }
                 }
@@ -260,7 +296,7 @@ fun MainScreen(modifier: Modifier = Modifier){
             ) {
                 Image(painter = painterResource(R.drawable.qr_code_scanner),
                     contentDescription = "Ícone do scanner de QR Code",
-                    colorFilter = ColorFilter.tint(Color.Black),
+                    colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onPrimary),
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(screenWidth*0.03f)
@@ -282,7 +318,7 @@ fun MainScreen(modifier: Modifier = Modifier){
             ) {
                 Image(painter = painterResource(R.drawable.filter_list),
                     contentDescription = null,
-                    colorFilter = ColorFilter.tint(Color.Black)
+                    colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary)
                 )
 
                 Spacer(modifier = Modifier.width(screenWidth*0.015f))
@@ -313,7 +349,7 @@ fun MainScreen(modifier: Modifier = Modifier){
                                 Text(categoriasErro!!, color = Color.Red)
                             } else {
                                 LazyColumn(
-                                    modifier = Modifier.heightIn(max = 300.dp)
+                                    modifier = Modifier.heightIn(max = screenHeight*0.4f)
                                 ) {
                                     items(categorias) { categoria ->
                                         Row(

@@ -1,5 +1,6 @@
 package br.com.superid.main
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -51,17 +52,48 @@ import br.com.superid.utils.HelperCripto
 import java.nio.charset.StandardCharsets
 import java.security.SecureRandom
 import android.util.Base64
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 
 class AddPasswordActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SuperIDTheme {
+            val systemDark = isSystemInDarkTheme()
+            val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
+            var isDarkTheme by remember { mutableStateOf(prefs.getBoolean("is_dark_theme", systemDark)) }
+
+            val lifecycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME) {
+                        isDarkTheme = prefs.getBoolean("is_dark_theme", systemDark)
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
+            }
+
+            SuperIDTheme(
+                darkTheme = isDarkTheme
+            ) {
                 AddPasswordScreen(
                     modifier = Modifier
                         .fillMaxSize()
-                        .wrapContentSize(Alignment.Center)
+                        .wrapContentSize(Alignment.Center),
+
+                    onToggleTheme = {
+                        isDarkTheme = !isDarkTheme
+                        prefs.edit().putBoolean("is_dark_theme", isDarkTheme).apply() },
+                    isDarkTheme = isDarkTheme
                 )
             }
         }
@@ -70,7 +102,11 @@ class AddPasswordActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddPasswordScreen(modifier: Modifier = Modifier){
+fun AddPasswordScreen(
+    onToggleTheme: () -> Unit,
+    isDarkTheme: Boolean,
+    modifier: Modifier = Modifier
+){
     val auth = Firebase.auth
     val db = Firebase.firestore
     val uid = SessionManager.currentUid ?: auth.currentUser?.uid.orEmpty()
@@ -110,17 +146,14 @@ fun AddPasswordScreen(modifier: Modifier = Modifier){
         topBar = {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = Color.Black
+                    containerColor = MaterialTheme.colorScheme.background
                 ),
                 title = {
                     Text("Adicionar senha")
                 },
                 navigationIcon = {
                     IconButton(onClick = {
-                        Intent(context, MainActivity::class.java).also{
-                            context.startActivity(it)
-                        }
+                        (context as? ComponentActivity)?.finish()
                     }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -143,8 +176,11 @@ fun AddPasswordScreen(modifier: Modifier = Modifier){
                         onDismissRequest = { expanded = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Ativar modo claro") },
-                            onClick = {}
+                            onClick = {
+                                onToggleTheme()
+                                expanded = false
+                            },
+                            text = { Text(if (isDarkTheme) "Ativar modo claro" else "Ativar modo escuro") }
                         )
                     }
                 }
@@ -156,9 +192,8 @@ fun AddPasswordScreen(modifier: Modifier = Modifier){
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(
-                    horizontal = screenWidth * 0.05f,
-                    vertical = screenHeight * 0.02f
-                )
+                    horizontal = screenWidth * 0.05f)
+                .padding(top= screenHeight*0.02f ,bottom = screenHeight*0.015f)
         ) {
             // Categoria dropdown
             Text("Categoria", modifier = Modifier.padding(bottom = screenHeight * 0.002f))
@@ -288,10 +323,11 @@ fun AddPasswordScreen(modifier: Modifier = Modifier){
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = screenHeight * 0.012f)
                     .height(screenHeight * 0.07f)
             ) {
-                Text("Salvar senha")
+                Text("Salvar senha",
+                    fontSize = (screenHeight*0.025f).value.sp
+                )
             }
         }
     }
