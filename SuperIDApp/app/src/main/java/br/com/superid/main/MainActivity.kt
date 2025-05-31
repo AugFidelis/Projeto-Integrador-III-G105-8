@@ -8,53 +8,16 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.BasicAlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeFloatingActionButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -63,22 +26,21 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import br.com.superid.R
-import br.com.superid.main.ui.theme.SuperIDTheme
+import br.com.superid.ui.theme.SuperIDTheme
 import br.com.superid.user.EditCategoriesActivity
 import br.com.superid.user.ProfileActivity
 import br.com.superid.user.WelcomeActivity
+import br.com.superid.main.QrScannerActivity
+import br.com.superid.main.EditPasswordActivity
+import br.com.superid.auth.SessionManager
+import br.com.superid.main.AddPasswordActivity
+import br.com.superid.utils.HelperCripto
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
-import br.com.superid.main.utils.KeyStoreHelper
-import br.com.superid.main.utils.Base64Utils
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -101,7 +63,8 @@ class MainActivity : ComponentActivity() {
 fun MainScreen(modifier: Modifier = Modifier){
     val auth = Firebase.auth
     val db = Firebase.firestore
-    val uid = auth.currentUser?.uid.orEmpty()
+    val uid = SessionManager.currentUid ?: auth.currentUser?.uid.orEmpty()
+    val secretKey = SessionManager.secretKey
 
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
@@ -134,7 +97,8 @@ fun MainScreen(modifier: Modifier = Modifier){
     var expandedCardMenuIndex by remember { mutableStateOf(-1) }
     var confirmarExclusaoIndex by remember { mutableStateOf(-1) }
 
-    LaunchedEffect(uid) {
+    // Carrega categorias e senhas
+    LaunchedEffect(uid, secretKey) {
         if (uid.isNotBlank()) {
             isLoadingCategorias = true
             db.collection("Users")
@@ -161,43 +125,45 @@ fun MainScreen(modifier: Modifier = Modifier){
             isLoadingSenhas = true
             db.collection("Users").document(uid)
                 .collection("Senhas")
-                .orderBy("dataCriacao")
+                .orderBy("DataCriacao") // Corrigido para "DataCriacao"
                 .get()
                 .addOnSuccessListener { result ->
                     val listaSenhas = result.map { doc ->
-                        val senhaCriptografadaBase64 = doc.getString("senha") ?: ""
-                        val senhaDescriptografada = if(senhaCriptografadaBase64.isNotBlank())
-                        try {
-                            val senhaCriptografadaBytes = Base64Utils.decodeFromBase64(senhaCriptografadaBase64)
-                            val senhaBytes = KeyStoreHelper.decryptData(senhaCriptografadaBytes)
-                            String(senhaBytes, Charsets.UTF_8)
-                        } catch (e: Exception){
-                            "[Falha ao descriptografar]"
-                        }
+                        val senhaCriptografadaBase64 = doc.getString("SenhaCriptografada") ?: ""
+                        // Descriptografa usando HelperCripto e secretKey
+                        val senhaDescriptografada = if(senhaCriptografadaBase64.isNotBlank() && secretKey != null)
+                            try {
+                                val senhaCriptografadaBytes = HelperCripto.decodeFromBase64(senhaCriptografadaBase64)
+                                val senhaBytes = HelperCripto.decryptData(senhaCriptografadaBytes, secretKey)
+                                String(senhaBytes, Charsets.UTF_8)
+                            } catch (e: Exception){
+                                "[Falha ao descriptografar]"
+                            }
                         else{
                             ""
                         }
 
-                        val loginCriptografadoBase64 = doc.getString("login") ?: ""
-                        val loginDescriptografado = if (loginCriptografadoBase64.isNotBlank()) {
+                        // Login pode ser criptografado também, ou salvo como texto simples
+                        val loginCriptografadoBase64 = doc.getString("Login") ?: ""
+                        val loginDescriptografado = if (loginCriptografadoBase64.isNotBlank() && secretKey != null) {
                             try {
-                                val loginCriptografadoBytes = Base64Utils.decodeFromBase64(loginCriptografadoBase64)
-                                val loginBytes = KeyStoreHelper.decryptData(loginCriptografadoBytes)
+                                val loginCriptografadoBytes = HelperCripto.decodeFromBase64(loginCriptografadoBase64)
+                                val loginBytes = HelperCripto.decryptData(loginCriptografadoBytes, secretKey)
                                 String(loginBytes, Charsets.UTF_8)
                             } catch (e: Exception) {
                                 "[Falha ao descriptografar]"
                             }
                         } else {
-                            ""
+                            doc.getString("Login") ?: ""
                         }
 
                         SenhaCard(
                             id = doc.id,
-                            title = doc.getString("nome") ?: "",
-                            description= doc.getString("descricao") ?: "",
+                            title = doc.getString("Categoria") ?: "",
+                            description= doc.getString("Descricao") ?: "",
                             login= loginDescriptografado,
                             password= senhaDescriptografada,
-                            category= doc.getString("categoria") ?: ""
+                            category= doc.getString("Categoria") ?: ""
                         )
                     }
                     senhas = listaSenhas
@@ -211,18 +177,19 @@ fun MainScreen(modifier: Modifier = Modifier){
         }
     }
 
+    val isEmailVerified = auth.currentUser?.isEmailVerified
+
     Scaffold(
         topBar = {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = Color.Black
+                    containerColor = MaterialTheme.colorScheme.background
                 ),
                 title = {
                     Image(painter = painterResource(R.drawable.superid_basic_logo),
                         contentDescription = "Logo do aplicativo",
-                        colorFilter = ColorFilter.tint(Color.Black)
-                        )
+                        colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary)
+                    )
                 },
                 navigationIcon = {},
                 actions = {
@@ -279,12 +246,16 @@ fun MainScreen(modifier: Modifier = Modifier){
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                    Intent(context, QrScannerActivity::class.java).also {
-                        context.startActivity(it)
+                    if(isEmailVerified == true) {
+                        Intent(context, QrScannerActivity::class.java).also {
+                            context.startActivity(it)
+                        }
+                    }else{
+                        Toast.makeText(context, "Verifique seu e-mail para usar este recurso!", Toast.LENGTH_LONG)
+                            .show()
                     }
                 },
-                modifier = Modifier
-                    .size(screenWidth*0.2f)
+                modifier = Modifier.size(screenWidth*0.2f)
             ) {
                 Image(painter = painterResource(R.drawable.qr_code_scanner),
                     contentDescription = "Ícone do scanner de QR Code",
@@ -307,10 +278,10 @@ fun MainScreen(modifier: Modifier = Modifier){
                     mostrarDialogo = true
                 },
                 verticalAlignment = Alignment.CenterVertically
-                ) {
+            ) {
                 Image(painter = painterResource(R.drawable.filter_list),
                     contentDescription = null,
-                    colorFilter = ColorFilter.tint(Color.Black)
+                    colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary)
                 )
 
                 Spacer(modifier = Modifier.width(screenWidth*0.015f))
@@ -397,7 +368,6 @@ fun MainScreen(modifier: Modifier = Modifier){
 
             when {
                 isLoadingSenhas -> {
-                    // Mostra indicador de carregamento
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -487,8 +457,6 @@ fun MainScreen(modifier: Modifier = Modifier){
                                         }
                                     }
 
-                                    //Spacer(modifier = Modifier.height(screenHeight*0.01f))
-
                                     Text(text = "Categoria: ${card.category}")
 
                                     Spacer(modifier = Modifier.height(screenHeight*0.01f))
@@ -548,5 +516,3 @@ fun MainScreen(modifier: Modifier = Modifier){
         }
     }
 }
-
-

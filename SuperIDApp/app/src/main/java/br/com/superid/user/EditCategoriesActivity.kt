@@ -56,7 +56,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import br.com.superid.main.MainActivity
-import br.com.superid.user.ui.theme.SuperIDTheme
+import br.com.superid.ui.theme.SuperIDTheme
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
