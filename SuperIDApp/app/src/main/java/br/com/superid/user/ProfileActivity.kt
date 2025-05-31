@@ -315,8 +315,10 @@ fun ProfileScreen(
                 OutlinedButton(
                     onClick = {
                         auth.signOut()
-                        context.startActivity(Intent(context, LoginActivity::class.java))
-                        activity?.finish()
+
+                        val intent = Intent(context, WelcomeActivity::class.java)
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        context.startActivity(intent)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
