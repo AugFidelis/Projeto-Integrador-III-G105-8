@@ -1,5 +1,6 @@
 package br.com.superid.user
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -8,13 +9,16 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -36,14 +40,18 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
@@ -52,11 +60,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import br.com.superid.R
 import br.com.superid.auth.LoginActivity
 import br.com.superid.auth.ResetMasterPasswordActivity
 import br.com.superid.main.MainActivity
-import br.com.superid.user.ui.theme.SuperIDTheme
+import br.com.superid.ui.theme.SuperIDTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -68,12 +79,36 @@ class ProfileActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SuperIDTheme {
+            val systemDark = isSystemInDarkTheme()
+            val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
+            var isDarkTheme by remember { mutableStateOf(prefs.getBoolean("is_dark_theme", systemDark)) }
+
+            val lifecycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME) {
+                        isDarkTheme = prefs.getBoolean("is_dark_theme", systemDark)
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
+            }
+
+            SuperIDTheme(
+                darkTheme = isDarkTheme
+            ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    ProfileScreen()
+                    ProfileScreen(
+                        onToggleTheme = {
+                            isDarkTheme = !isDarkTheme
+                            prefs.edit().putBoolean("is_dark_theme", isDarkTheme).apply() },
+                        isDarkTheme = isDarkTheme
+                    )
                 }
                 }
             }
@@ -83,12 +118,19 @@ class ProfileActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileScreen() {
+fun ProfileScreen(
+    onToggleTheme: () -> Unit,
+    isDarkTheme: Boolean,
+    modifier: Modifier = Modifier
+) {
     val context = LocalContext.current
     val activity = context as? ComponentActivity
     val auth = FirebaseAuth.getInstance()
     val currentUser = auth.currentUser
     val db = FirebaseFirestore.getInstance()
+
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
 
     var expanded by remember { mutableStateOf(false) }
 
@@ -114,22 +156,15 @@ fun ProfileScreen() {
         topBar = {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = Color.Black
+                    containerColor = MaterialTheme.colorScheme.background
                 ),
                 title = {
-                    Text("Termos de uso")
+                    Text("Perfil")
                 },
                 navigationIcon = {
                     IconButton(onClick = {
-                        Intent(context, MainActivity::class.java).also{
-                            context.startActivity(it)
-                        }
+                        (context as? ComponentActivity)?.finish()
                     }) {
-//                        Image(painter = painterResource(R.drawable.returnarrow),
-//                            contentDescription = "Seta de retorno à tela anterior",
-//                            colorFilter = ColorFilter.tint(Color.Black)
-//                            )
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Seta de retorno à tela anterior"
@@ -151,8 +186,11 @@ fun ProfileScreen() {
                         onDismissRequest = { expanded = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Ativar modo claro") },
-                            onClick = {}
+                            onClick = {
+                                onToggleTheme()
+                                expanded = false
+                            },
+                            text = { Text(if (isDarkTheme) "Ativar modo claro" else "Ativar modo escuro") }
                         )
                     }
                 }
@@ -163,30 +201,35 @@ fun ProfileScreen() {
             modifier = Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
-                .padding(24.dp),
+                .padding(bottom = screenHeight*0.015f)
+                .padding(horizontal = screenWidth*0.05f),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Image(
                 painter = painterResource(id = R.drawable.superid_logo),
                 contentDescription = "Logo SUPERID",
-                modifier = Modifier.height(80.dp)
+                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
+                modifier = Modifier.size(screenHeight*0.25f)
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(screenHeight*0.025f))
 
             Text("Informações da conta", style = MaterialTheme.typography.titleMedium)
 
-            Spacer(modifier = Modifier.height(12.dp))
-
+            Spacer(modifier = Modifier.height(screenHeight*0.02f))
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E))
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(screenHeight*0.015f)) {
                     Text("Nome: $userName")
+
+                    Spacer(modifier = Modifier.height(screenHeight * 0.015f))
+
                     Text("E-mail: $userEmail")
-                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Spacer(modifier = Modifier.height(screenHeight * 0.015f))
+
                     Text("Status de verificação:")
 
                     if (isEmailVerified) {
@@ -253,110 +296,37 @@ fun ProfileScreen() {
 
             Spacer(modifier = Modifier.weight(1f))
 
-            Button(
-                onClick = {
-                    context.startActivity(Intent(context, ResetMasterPasswordActivity::class.java))
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Redefinir senha mestre")
-            }
-
-            OutlinedButton(
-                onClick = {
-                    auth.signOut()
-                    context.startActivity(Intent(context, LoginActivity::class.java))
-                    activity?.finish()
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Sair da conta")
-            }
-        }
-    }
-}
-
-
-@Preview(showSystemUi = true, showBackground = true)
-@Composable
-fun ProfileScreenPreview() {
-    SuperIDTheme {
-        FakeProfileScreen()
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun FakeProfileScreen() {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Perfil") },
-                navigationIcon = {
-                    IconButton(onClick = {}) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Voltar")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            )
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.superid_logo),
-                contentDescription = "Logo SUPERID",
-                modifier = Modifier.height(80.dp)
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text("Informações da conta", style = MaterialTheme.typography.titleMedium)
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E))
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Nome: João da Silva")
-                    Text("E-mail: joao@email.com")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("Status de verificação:")
-                    Text(
-                        "Não verificado [Verificar agora]",
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+            Column(
+                verticalArrangement = Arrangement.spacedBy(screenHeight*0.01f)
+            ){
+                Button(
+                    onClick = {
+                        context.startActivity(Intent(context, ResetMasterPasswordActivity::class.java))
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(screenHeight*0.07f)
+                ) {
+                    Text("Redefinir senha mestre",
+                        fontSize = (screenHeight*0.025f).value.sp
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        "Email de verificação será enviado aqui",
-                        fontSize = 12.sp,
-                        color = Color.Gray
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        auth.signOut()
+                        context.startActivity(Intent(context, LoginActivity::class.java))
+                        activity?.finish()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(screenHeight*0.07f)
+                ) {
+                    Text("Sair da conta",
+                        fontSize = (screenHeight*0.025f).value.sp
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            Button(onClick = {}, modifier = Modifier.fillMaxWidth()) {
-                Text("Redefinir senha mestre")
-            }
-            OutlinedButton(onClick = {}, modifier = Modifier.fillMaxWidth()) {
-                Text("Sair da conta")
-            }
         }
     }
 }
-
-
