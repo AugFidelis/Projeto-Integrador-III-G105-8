@@ -181,6 +181,11 @@ fun ResetMasterPasswordScreen(
 
                 Button(
                     onClick = {
+                        if (currentPassword.isBlank() || newPassword.isBlank()) {
+                            Toast.makeText(context, "Preencha todos os campos para continuar.", Toast.LENGTH_LONG).show()
+                            return@Button
+                        }
+
                         if (user != null && user.email != null) {
                             isLoading = true
                             val credential = EmailAuthProvider.getCredential(user.email!!, currentPassword)
