@@ -1,5 +1,6 @@
 package br.com.superid.auth
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.provider.Settings
 import android.os.Bundle
@@ -33,6 +34,8 @@ import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import br.com.superid.ui.theme.SuperIDTheme
+import br.com.superid.auth.LoginActivity
+
 
 class SignUpActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,7 +52,42 @@ class SignUpActivity : ComponentActivity() {
         }
     }
 }
+/**
+ * Tela de cadastro de novos usuários com suporte à autenticação via Firebase.
+ *
+ * Esta função implementa a interface de cadastro com os seguintes fluxos:
+ * Coleta nome, e-mail, senha mestre e confirmação de senha,
+ *
+ * Valida os campos conforme regras:
+ *   -Todos campos obrigatórios
+ *   - Formato de e-mail válido
+ *   - Coincidência entre senha e confirmação,
+ *
+ * Quando `useFirebase = true`:
+ *   - Cria conta no Firebase Authentication
+ *   - Envia e-mail de verificação
+ *   - Armazena dados complementares no Firestore:
+ *     - Nome do usuário
+ *     - Salt para criptografia (codificado em Base64)
+ *     - Android ID do dispositivo
+ *   - Cria categorias padrão para o novo usuário,
+ *
+ * @param useFirebase Quando `true`, habilita integração com Firebase (autenticação e banco de dados).
+ *                    Quando `false`, exibe apenas o formulário sem funcionalidades reais (modo de demonstração).
+ *                    Default: `true`
+ * @param modifier Permite customização do layout através de Modifiers do Jetpack Compose.
+ *                 Útil para ajustar padding, tamanho ou outros aspectos visuais quando incorporado em layouts complexos.
+ *
+ * @throws SecurityException Se tentar acessar o Android ID sem permissão adequada (quando useFirebase=true)
+ *
+ * @see Firebase.auth Para operações de autenticação
+ * @see Firebase.firestore Para armazenamento de dados do usuário
+ * @see HelperCripto Para geração do salt e codificação Base64
+ *
+ * @sample SignUpScreen(useFirebase = false) Para visualizar apenas o layout
+ */
 
+@SuppressLint("HardwareIds")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignUpScreen(
@@ -57,6 +95,8 @@ fun SignUpScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+
+    // Estados para campos de entrada e controle de UI
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -64,8 +104,9 @@ fun SignUpScreen(
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val auth = if (useFirebase) Firebase.auth else null
-    val db = if (useFirebase) Firebase.firestore else null
+    // Configuração condicional do Firebase
+    val auth = if (useFirebase) Firebase.auth else null  // Instância de autenticação (null em modo demo)
+    val db = if (useFirebase) Firebase.firestore else null // Instância do Firestore (null em modo demo)
 
     var expanded by remember { mutableStateOf(false) }
 
@@ -73,6 +114,7 @@ fun SignUpScreen(
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
 
     Scaffold(
+        // TopBar com botão de voltar e menu dropdown
         topBar = {
             TopAppBar(
                 title = { Text("Cadastro") },
@@ -112,20 +154,22 @@ fun SignUpScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
+
+        // Conteúdo principal da tela de cadastro
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(bottom = screenHeight*0.015f)
-                .padding(horizontal = screenWidth*0.05f),
+                .padding(bottom = screenHeight * 0.015f)
+                .padding(horizontal = screenWidth * 0.05f),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
+            // Logo do app e título da tela
             Image(
                 painter = painterResource(id = R.drawable.superid_logo),
                 contentDescription = "Logo SuperID",
-                modifier = Modifier
-                    .size(screenHeight*0.25f),
+                modifier = Modifier.size(screenHeight * 0.25f),
                 colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary)
             )
 
@@ -139,6 +183,7 @@ fun SignUpScreen(
                 lineHeight = (screenHeight * 0.03f).value.sp
             )
 
+            // Campos de entrada: nome, e-mail, senha e confirmação
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
@@ -179,18 +224,25 @@ fun SignUpScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(screenHeight*0.025f))
+            Spacer(modifier = Modifier.height(screenHeight * 0.025f))
 
+            // Exibe mensagens de erro, se houver
             errorMessage?.let {
-                Text(it, color = MaterialTheme.colorScheme.error,
-                    textAlign = TextAlign.Center)
+                Text(it, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
             }
 
-            Box(modifier = Modifier.fillMaxSize()){
+            // Botão de ação principal: Criação de conta
+            Box(modifier = Modifier.fillMaxSize()) {
                 Button(
                     onClick = {
+                        // Validações básicas de preenchimento, formato e senha
                         if (name.isBlank() || email.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
                             errorMessage = "Preencha todos os campos."
+                            return@Button
+                        }
+
+                        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                            errorMessage = "E-mail inválido. Verifique o formato."
                             return@Button
                         }
 
@@ -199,72 +251,85 @@ fun SignUpScreen(
                             return@Button
                         }
 
+                        // Criação da conta no Firebase Auth
                         if (useFirebase) {
                             isLoading = true
                             auth?.createUserWithEmailAndPassword(email, password)
                                 ?.addOnCompleteListener { task ->
-                                    isLoading = false
                                     if (task.isSuccessful) {
-                                        val uid = auth.currentUser?.uid.orEmpty()
-                                        val userRef = db?.collection("Users")?.document(uid)
+                                        val user = auth.currentUser
 
-                                        // === GERAR SALT E SALVAR JUNTO AO USUÁRIO ===
-                                        val salt = HelperCripto.generateSalt()
-                                        val saltBase64 = HelperCripto.encodeToBase64(salt)
+                                        // Envio do e-mail de verificação
+                                        user?.sendEmailVerification()
+                                            ?.addOnCompleteListener { verifyTask ->
+                                                if (!verifyTask.isSuccessful) {
+                                                    isLoading = false
+                                                    errorMessage = "Erro ao enviar verificação. Use um e-mail válido."
+                                                    user?.delete()
+                                                    return@addOnCompleteListener
+                                                }
 
-                                        // PEGAR O ANDROID ID
-                                        val androidId = Settings.Secure.getString(
-                                            context.contentResolver,
-                                            Settings.Secure.ANDROID_ID
-                                        )
+                                                // Armazena dados adicionais no Firestore
+                                                val uid = user.uid
+                                                val userRef = db?.collection("Users")?.document(uid)
 
-                                        userRef?.set(
-                                            mapOf(
-                                                "Nome" to name,
-                                                "salt" to saltBase64,
-                                                "androidId" to androidId
-                                            )
-                                        )?.addOnSuccessListener {
-                                            val categoriasRef = userRef.collection("Categorias")
-
-                                            // Adiciona as categorias a uma coleção dentro da coleção do usuário
-                                            val tarefasCategorias = listOf(
-                                                categoriasRef.document().set(
-                                                    mapOf(
-                                                        "Nome" to "Sites da Web",
-                                                        "DataCriacao" to com.google.firebase.Timestamp.now()
-                                                    )
-                                                ),
-                                                categoriasRef.document().set(
-                                                    mapOf(
-                                                        "Nome" to "Aplicativos",
-                                                        "DataCriacao" to com.google.firebase.Timestamp.now()
-                                                    )
-                                                ),
-                                                categoriasRef.document().set(
-                                                    mapOf(
-                                                        "Nome" to "Teclados de acesso físico",
-                                                        "DataCriacao" to com.google.firebase.Timestamp.now()
-                                                    )
+                                                val salt = HelperCripto.generateSalt()
+                                                val saltBase64 = HelperCripto.encodeToBase64(salt)
+                                                val androidId = Settings.Secure.getString(
+                                                    context.contentResolver,
+                                                    Settings.Secure.ANDROID_ID
                                                 )
-                                            )
 
-                                            Tasks.whenAllComplete(tarefasCategorias)
-                                                .addOnSuccessListener {
+                                                userRef?.set(
+                                                    mapOf(
+                                                        "Nome" to name,
+                                                        "salt" to saltBase64,
+                                                        "androidId" to androidId
+                                                    )
+                                                )?.addOnSuccessListener {
+                                                    // Criação de categorias padrão
+                                                    val categoriasRef = userRef.collection("Categorias")
+                                                    val tarefasCategorias = listOf(
+                                                        categoriasRef.document().set(
+                                                            mapOf(
+                                                                "Nome" to "Sites da Web",
+                                                                "DataCriacao" to com.google.firebase.Timestamp.now()
+                                                            )
+                                                        ),
+                                                        categoriasRef.document().set(
+                                                            mapOf(
+                                                                "Nome" to "Aplicativos",
+                                                                "DataCriacao" to com.google.firebase.Timestamp.now()
+                                                            )
+                                                        ),
+                                                        categoriasRef.document().set(
+                                                            mapOf(
+                                                                "Nome" to "Teclados de acesso físico",
+                                                                "DataCriacao" to com.google.firebase.Timestamp.now()
+                                                            )
+                                                        )
+                                                    )
+
+                                                    // Confirma sucesso geral e redireciona para login
+                                                    Tasks.whenAllComplete(tarefasCategorias)
+                                                        .addOnSuccessListener {
+                                                            isLoading = false
+                                                            Toast.makeText(
+                                                                context,
+                                                                "Conta criada! Verifique seu e-mail.",
+                                                                Toast.LENGTH_LONG
+                                                            ).show()
+                                                            context.startActivity(Intent(context, LoginActivity::class.java))
+                                                        }
+                                                        .addOnFailureListener { e ->
+                                                            isLoading = false
+                                                            errorMessage = "Erro ao salvar categorias: ${e.localizedMessage}"
+                                                        }
+                                                }?.addOnFailureListener {
                                                     isLoading = false
-                                                    Toast.makeText(context, "Conta criada com sucesso!", Toast.LENGTH_SHORT).show()
-                                                    Intent(context, LoginActivity::class.java).also {
-                                                        context.startActivity(it)
-                                                    }
+                                                    errorMessage = "Erro ao salvar dados no banco."
                                                 }
-                                                .addOnFailureListener { e ->
-                                                    isLoading = false
-                                                    errorMessage = "Erro ao salvar categorias: ${e.localizedMessage}"
-                                                }
-                                        }?.addOnFailureListener { e ->
-                                            isLoading = false
-                                            errorMessage = "Erro ao salvar dados no banco."
-                                        }
+                                            }
                                     } else {
                                         isLoading = false
                                         errorMessage = task.exception?.message ?: "Erro ao criar conta."
@@ -274,12 +339,13 @@ fun SignUpScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(screenHeight*0.07f)
+                        .height(screenHeight * 0.07f)
                         .align(Alignment.BottomCenter),
                     enabled = !isLoading
                 ) {
-                    Text(text = if (isLoading) "Carregando..." else "Criar conta",
-                        fontSize = (screenHeight*0.025f).value.sp
+                    Text(
+                        text = if (isLoading) "Carregando..." else "Criar conta",
+                        fontSize = (screenHeight * 0.025f).value.sp
                     )
                 }
             }
