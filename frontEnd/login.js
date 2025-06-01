@@ -9,7 +9,6 @@ const errorQrMsg = document.getElementById('error-qr-msg');
 // Configurando o firebase
 const FIREBASE_PROJECT_ID = 'projeto-integrador-3-g105-8';
 const FUNCTIONS_BASE_URL = 'https://us-central1-projeto-integrador-3-g105-8.cloudfunctions.net';
- 
 
 const PERFORM_AUTH_URL = `${FUNCTIONS_BASE_URL}/performAuth`;
 const PARTNER_API_KEY = 'minha_chave_secreta';
@@ -18,6 +17,9 @@ const PARTNER_URL = 'https://meu.site.parceiro.com';
 // Definindo contador
 let countdownInterval;
 const EXPIRATION_TIME_SECONDS = 60; 
+
+let loginTokenGlobal = null; // Armazena o token atual
+let statusInterval = null;   // Intervalo para polling
 
 // O contador é iniciado aqui.
 function startCountdown() {
@@ -36,14 +38,48 @@ function startCountdown() {
             // Opcional: Reativar o botão de gerar QR Code para que o usuário possa gerar um novo
             generateQrCodeBtn.disabled = false; 
             generateQrCodeBtn.textContent = 'Gerar Novo QR Code';
+            // Limpa polling de status também
+            if (statusInterval) clearInterval(statusInterval);
         }
     }, 1000);
 }
 
-// Adicionar evento de clique ao botão "Gerar QR Code"
+// NOVA FUNÇÃO: Checar status periodicamente
+function startLoginStatusPolling(loginToken) {
+    if (statusInterval) clearInterval(statusInterval);
+
+    statusInterval = setInterval(async () => {
+        try {
+            const response = await fetch('https://us-central1-projeto-integrador-3-g105-8.cloudfunctions.net/getLoginStatus', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ loginToken })
+            });
+
+            if (response.status === 200) {
+                // Login SUCCESS!
+                clearInterval(statusInterval);
+                window.location.href = "success.html";
+            } else if (response.status === 410) {
+                // Token expirado
+                clearInterval(statusInterval);
+                countdownTimerDisplay.textContent = "QR Code expirado!";
+                qrcodeDisplayArea.style.display = 'none';
+            }
+            // Se for 202 ("pending"), não faz nada
+        } catch (e) {
+            console.error("Erro ao checar status do login:", e);
+        }
+    }, 2000); // Checa a cada 2 segundos
+}
+
+// Evento de clique no botão "Gerar QR Code"
 generateQrCodeBtn.addEventListener('click', async () => {
     if (countdownInterval) {
         clearInterval(countdownInterval);
+    }
+    if (statusInterval) {
+        clearInterval(statusInterval);
     }
 
     generateQrCodeBtn.disabled = true;
@@ -77,6 +113,10 @@ generateQrCodeBtn.addEventListener('click', async () => {
         qrcodeImg.src = data.qrBase64;
         qrcodeDisplayArea.style.display = 'block';
         startCountdown();
+
+        loginTokenGlobal = data.loginToken; // Salva o token
+        startLoginStatusPolling(loginTokenGlobal); // Começa a escutar
+
         generateQrCodeBtn.disabled = false;
         generateQrCodeBtn.textContent = 'Gerar QR Code';
 
