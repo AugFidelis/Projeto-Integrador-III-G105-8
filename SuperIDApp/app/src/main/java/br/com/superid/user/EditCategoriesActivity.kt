@@ -1,11 +1,13 @@
 package br.com.superid.user
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,10 +44,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,6 +59,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import br.com.superid.main.MainActivity
 import br.com.superid.ui.theme.SuperIDTheme
 import com.google.firebase.auth.ktx.auth
@@ -66,30 +73,48 @@ class EditCategoriesActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SuperIDTheme {
+            val systemDark = isSystemInDarkTheme()
+            val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
+            var isDarkTheme by remember { mutableStateOf(prefs.getBoolean("is_dark_theme", systemDark)) }
+
+            val lifecycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME) {
+                        isDarkTheme = prefs.getBoolean("is_dark_theme", systemDark)
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
+            }
+
+            SuperIDTheme(
+                darkTheme = isDarkTheme
+            ) {
                 EditCategoriesScreen(
                     modifier = Modifier
                         .fillMaxSize()
-                        .wrapContentSize(Alignment.Center)
+                        .wrapContentSize(Alignment.Center),
+
+                    onToggleTheme = {
+                        isDarkTheme = !isDarkTheme
+                        prefs.edit().putBoolean("is_dark_theme", isDarkTheme).apply() },
+                    isDarkTheme = isDarkTheme
                 )
             }
         }
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun EditCategoriesPreview(){
-    EditCategoriesScreen(
-        modifier = Modifier
-            .fillMaxSize()
-            .wrapContentSize(Alignment.Center)
-    )
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditCategoriesScreen(modifier: Modifier = Modifier){
+fun EditCategoriesScreen(
+    onToggleTheme: () -> Unit,
+    isDarkTheme: Boolean,
+    modifier: Modifier = Modifier
+){
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val context = LocalContext.current
@@ -104,17 +129,14 @@ fun EditCategoriesScreen(modifier: Modifier = Modifier){
         topBar = {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = Color.Black
+                    containerColor = MaterialTheme.colorScheme.background
                 ),
                 title = {
                     Text("Editar categorias")
                 },
                 navigationIcon = {
                     IconButton(onClick = {
-                        Intent(context, MainActivity::class.java).also{
-                            context.startActivity(it)
-                        }
+                        (context as? ComponentActivity)?.finish()
                     }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -146,8 +168,11 @@ fun EditCategoriesScreen(modifier: Modifier = Modifier){
                         onDismissRequest = { expanded = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Ativar modo claro") },
-                            onClick = {}
+                            onClick = {
+                                onToggleTheme()
+                                expanded = false
+                            },
+                            text = { Text(if (isDarkTheme) "Ativar modo claro" else "Ativar modo escuro") }
                         )
                     }
                 }
@@ -393,6 +418,7 @@ fun EditCategoriesScreen(modifier: Modifier = Modifier){
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(bottom = screenHeight * 0.015f)
+                .padding(horizontal = screenWidth*0.02f)
         ) {
             if (isLoading) {
                 CircularProgressIndicator(

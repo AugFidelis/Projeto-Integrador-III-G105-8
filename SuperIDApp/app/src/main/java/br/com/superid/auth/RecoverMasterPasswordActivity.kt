@@ -1,6 +1,7 @@
 package br.com.superid.auth
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -22,10 +23,17 @@ import br.com.superid.R
 import br.com.superid.ui.theme.SuperIDTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import android.widget.Toast
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import br.com.superid.user.WelcomeActivity
 import com.google.firebase.auth.FirebaseAuth
 
@@ -35,8 +43,32 @@ class RecoverMasterPasswordActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SuperIDTheme {
-                RecoverMasterPasswordScreen()
+            val systemDark = isSystemInDarkTheme()
+            val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
+            var isDarkTheme by remember { mutableStateOf(prefs.getBoolean("is_dark_theme", systemDark)) }
+
+            val lifecycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME) {
+                        isDarkTheme = prefs.getBoolean("is_dark_theme", systemDark)
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
+            }
+
+            SuperIDTheme(
+                darkTheme = isDarkTheme
+            ) {
+                RecoverMasterPasswordScreen(
+                    onToggleTheme = {
+                        isDarkTheme = !isDarkTheme
+                        prefs.edit().putBoolean("is_dark_theme", isDarkTheme).apply() },
+                    isDarkTheme = isDarkTheme
+                )
             }
         }
     }
@@ -56,11 +88,18 @@ class RecoverMasterPasswordActivity : ComponentActivity() {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RecoverMasterPasswordScreen() {
+fun RecoverMasterPasswordScreen(
+    onToggleTheme: () -> Unit,
+    isDarkTheme: Boolean,
+    modifier: Modifier = Modifier
+) {
     var email by remember { mutableStateOf("") }
     val context = LocalContext.current
     val auth = FirebaseAuth.getInstance()
     val currentUser = auth.currentUser
+
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
 
     var expanded by remember { mutableStateOf(false) }
 
@@ -68,17 +107,14 @@ fun RecoverMasterPasswordScreen() {
         topBar = {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = Color.Black
+                    containerColor = MaterialTheme.colorScheme.background
                 ),
                 title = {
                     Text("Termos de uso")
                 },
                 navigationIcon = {
                     IconButton(onClick = {
-                        Intent(context, LoginActivity::class.java).also {
-                            context.startActivity(it)
-                        }
+                        (context as? ComponentActivity)?.finish()
                     }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -101,8 +137,11 @@ fun RecoverMasterPasswordScreen() {
                         onDismissRequest = { expanded = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Ativar modo claro") },
-                            onClick = {}
+                            onClick = {
+                                onToggleTheme()
+                                expanded = false
+                            },
+                            text = { Text(if (isDarkTheme) "Ativar modo claro" else "Ativar modo escuro") }
                         )
                     }
                 }
@@ -113,35 +152,31 @@ fun RecoverMasterPasswordScreen() {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(horizontal = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Top
+                    .padding(bottom = screenHeight*0.015f)
+                    .padding(horizontal = screenWidth*0.05f),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.height(32.dp))
-
                 Image(
                     painter = painterResource(id = R.drawable.superid_logo),
                     contentDescription = "Logo do Aplicativo",
-                    modifier = Modifier.size(150.dp)
+                    colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
+                    modifier = Modifier.size(screenHeight*0.25f)
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(screenHeight * 0.02f))
 
                 // Instruções para o usuário
                 Text(
                     text = "Informe o email cadastrado para receber o link de redefinição da senha mestre. O email precisa ter sido validado previamente.",
-                    fontSize = 14.sp,
-                    color = Color.Black
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(screenHeight * 0.03f))
 
                 // Campo de e-mail
                 Text(
-                    text = "E-Mail",
+                    text = "E-mail:",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 4.dp)
                         .align(Alignment.Start)
                 )
 
@@ -151,21 +186,10 @@ fun RecoverMasterPasswordScreen() {
                     label = { Text("exemplo@email.com") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    visualTransformation = VisualTransformation.None,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color.Gray,
-                        unfocusedBorderColor = Color.DarkGray,
-                        focusedLabelColor = Color.Gray,
-                        unfocusedLabelColor = Color.LightGray,
-                        cursorColor = Color.White,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedPlaceholderColor = Color.LightGray,
-                        unfocusedPlaceholderColor = Color.LightGray
-                    )
+                    visualTransformation = VisualTransformation.None
                 )
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.weight(1f))
 
                 Button(
                     onClick = {
@@ -210,14 +234,13 @@ fun RecoverMasterPasswordScreen() {
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp)
+                        .height(screenHeight*0.07f)
                 ) {
-                    Text("Enviar link")
+                    Text(text = "Enviar link",
+                        fontSize = (screenHeight*0.025f).value.sp
+                    )
                 }
             }
         }
     )
 }
-
-
-
