@@ -8,6 +8,10 @@ import {getFirestore, Timestamp} from "firebase-admin/firestore";
 initializeApp();
 const db = getFirestore();
 
+function normalizeUrl(url: string): string {
+  return url.replace(/^https?:\/\//, '');
+}
+
 export const performAuth = onRequest(async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -26,15 +30,18 @@ export const performAuth = onRequest(async (req, res) => {
     return;
   }
 
+  // Normaliza a URL antes de consultar o Firestore
+  const normalizedUrl = normalizeUrl(url);
+
   try {
     const partnersRef = db.collection("partners");
     const snapshot = await partnersRef
-      .where("url", "==", url)
+      .where("url", "==", normalizedUrl)
       .where("apiKey", "==", apiKey)
       .get();
 
     if (snapshot.empty) {
-      logger.warn("performAuth: Unauthorized partner detected.", {apiKey, url});
+      logger.warn("performAuth: Unauthorized partner detected.", {apiKey, url: normalizedUrl});
       res.status(403).send("Unauthorized partner");
       return;
     }
