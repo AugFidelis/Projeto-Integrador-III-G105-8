@@ -42,11 +42,25 @@ class RecoverMasterPasswordActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Tela de recuperação de senha mestre.
+ *
+ * Fluxo principal:
+ * - Usuário informa e-mail cadastrado
+ * - Sistema verifica se o formato de e-mail é validado
+ * - Envia link de redefinição via Firebase Auth
+ * - Redireciona para tela de login após sucesso
+ *
+ * @throws FirebaseAuthException Em caso de falha na comunicação com Firebase
+ *
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecoverMasterPasswordScreen() {
     var email by remember { mutableStateOf("") }
     val context = LocalContext.current
+    val auth = FirebaseAuth.getInstance()
+    val currentUser = auth.currentUser
 
     var expanded by remember { mutableStateOf(false) }
 
@@ -62,14 +76,10 @@ fun RecoverMasterPasswordScreen() {
                 },
                 navigationIcon = {
                     IconButton(onClick = {
-                        Intent(context, LoginActivity::class.java).also{
+                        Intent(context, LoginActivity::class.java).also {
                             context.startActivity(it)
                         }
                     }) {
-//                        Image(painter = painterResource(R.drawable.returnarrow),
-//                            contentDescription = "Seta de retorno à tela anterior",
-//                            colorFilter = ColorFilter.tint(Color.Black)
-//                            )
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Seta de retorno à tela anterior"
@@ -117,6 +127,7 @@ fun RecoverMasterPasswordScreen() {
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                // Instruções para o usuário
                 Text(
                     text = "Informe o email cadastrado para receber o link de redefinição da senha mestre. O email precisa ter sido validado previamente.",
                     fontSize = 14.sp,
@@ -125,6 +136,7 @@ fun RecoverMasterPasswordScreen() {
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                // Campo de e-mail
                 Text(
                     text = "E-Mail",
                     modifier = Modifier
@@ -158,29 +170,36 @@ fun RecoverMasterPasswordScreen() {
                 Button(
                     onClick = {
                         if (email.isNotEmpty()) {
-                            FirebaseAuth.getInstance().sendPasswordResetEmail(email)
-                                .addOnCompleteListener { task ->
-                                    if (task.isSuccessful) {
-                                        Toast.makeText(
-                                            context,
-                                            "Link de recuperação enviado para $email",
-                                            Toast.LENGTH_LONG
-                                        ).show()
+                            currentUser?.reload()?.addOnCompleteListener {
+                                val user = auth.currentUser
+                                if (user != null && user.isEmailVerified) {
+                                    auth.sendPasswordResetEmail(email)
+                                        .addOnCompleteListener { task ->
+                                            if (task.isSuccessful) {
+                                                Toast.makeText(
+                                                    context,
+                                                    "Link de recuperação enviado para $email",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
 
-                                        val intent = Intent(context, LoginActivity::class.java)
-                                        context.startActivity(intent)
-
-                                        if (context is Activity){
-                                            context.finish()
+                                                context.startActivity(Intent(context, LoginActivity::class.java))
+                                                if (context is Activity) context.finish()
+                                            } else {
+                                                Toast.makeText(
+                                                    context,
+                                                    "Erro ao enviar o link. Verifique o email.",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
+                                            }
                                         }
-                                    } else {
-                                        Toast.makeText(
-                                            context,
-                                            "Erro ao enviar o link. Verifique o email.",
-                                            Toast.LENGTH_LONG
-                                        ).show()
-                                    }
+                                } else {
+                                    Toast.makeText(
+                                        context,
+                                        "Conta não verificada. Verifique seu e-mail antes de continuar.",
+                                        Toast.LENGTH_LONG
+                                    ).show()
                                 }
+                            }
                         } else {
                             Toast.makeText(
                                 context,
@@ -201,10 +220,4 @@ fun RecoverMasterPasswordScreen() {
 }
 
 
-@Preview(showBackground = true)
-@Composable
-fun RecoverMasterPasswordPreview() {
-    SuperIDTheme {
-        RecoverMasterPasswordScreen()
-    }
-}
+
