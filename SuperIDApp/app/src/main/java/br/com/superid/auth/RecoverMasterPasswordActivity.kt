@@ -74,6 +74,18 @@ class RecoverMasterPasswordActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Tela de recuperação de senha mestre.
+ *
+ * Fluxo principal:
+ * - Usuário informa e-mail cadastrado
+ * - Sistema verifica se o formato de e-mail é validado
+ * - Envia link de redefinição via Firebase Auth
+ * - Redireciona para tela de login após sucesso
+ *
+ * @throws FirebaseAuthException Em caso de falha na comunicação com Firebase
+ *
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecoverMasterPasswordScreen(
@@ -83,6 +95,8 @@ fun RecoverMasterPasswordScreen(
 ) {
     var email by remember { mutableStateOf("") }
     val context = LocalContext.current
+    val auth = FirebaseAuth.getInstance()
+    val currentUser = auth.currentUser
 
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
@@ -151,12 +165,14 @@ fun RecoverMasterPasswordScreen(
 
                 Spacer(modifier = Modifier.height(screenHeight * 0.02f))
 
+                // Instruções para o usuário
                 Text(
                     text = "Informe o email cadastrado para receber o link de redefinição da senha mestre. O email precisa ter sido validado previamente.",
                 )
 
                 Spacer(modifier = Modifier.height(screenHeight * 0.03f))
 
+                // Campo de e-mail
                 Text(
                     text = "E-mail:",
                     modifier = Modifier
@@ -178,29 +194,36 @@ fun RecoverMasterPasswordScreen(
                 Button(
                     onClick = {
                         if (email.isNotEmpty()) {
-                            FirebaseAuth.getInstance().sendPasswordResetEmail(email)
-                                .addOnCompleteListener { task ->
-                                    if (task.isSuccessful) {
-                                        Toast.makeText(
-                                            context,
-                                            "Link de recuperação enviado para $email",
-                                            Toast.LENGTH_LONG
-                                        ).show()
+                            currentUser?.reload()?.addOnCompleteListener {
+                                val user = auth.currentUser
+                                if (user != null && user.isEmailVerified) {
+                                    auth.sendPasswordResetEmail(email)
+                                        .addOnCompleteListener { task ->
+                                            if (task.isSuccessful) {
+                                                Toast.makeText(
+                                                    context,
+                                                    "Link de recuperação enviado para $email",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
 
-                                        val intent = Intent(context, LoginActivity::class.java)
-                                        context.startActivity(intent)
-
-                                        if (context is Activity){
-                                            context.finish()
+                                                context.startActivity(Intent(context, LoginActivity::class.java))
+                                                if (context is Activity) context.finish()
+                                            } else {
+                                                Toast.makeText(
+                                                    context,
+                                                    "Erro ao enviar o link. Verifique o email.",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
+                                            }
                                         }
-                                    } else {
-                                        Toast.makeText(
-                                            context,
-                                            "Erro ao enviar o link. Verifique o email.",
-                                            Toast.LENGTH_LONG
-                                        ).show()
-                                    }
+                                } else {
+                                    Toast.makeText(
+                                        context,
+                                        "Conta não verificada. Verifique seu e-mail antes de continuar.",
+                                        Toast.LENGTH_LONG
+                                    ).show()
                                 }
+                            }
                         } else {
                             Toast.makeText(
                                 context,

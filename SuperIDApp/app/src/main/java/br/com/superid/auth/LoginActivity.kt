@@ -78,6 +78,24 @@ class LoginActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Tela de login com autenticação via Firebase.
+ *
+ * Esta função implementa:
+ * - Validação básica dos campos de e-mail e senha
+ * - Autenticação via Firebase Authentication
+ * - Recuperação do salt do usuário no Firestore
+ * - Derivação da chave secreta para criptografia
+ * - Redirecionamento para recuperação de senha
+ *
+ * @param useFirebase Quando true, habilita integração com Firebase (modo produção).
+ *                    Quando false, exibe apenas a UI sem funcionalidades reais (modo teste).
+ *                    Default: true
+ * @param modifier Permite customização do layout através de Modifiers do Jetpack Compose
+ *
+ * @throws SecurityException Se houver falha na derivação da chave criptográfica
+ */
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
@@ -87,11 +105,14 @@ fun LoginScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+
+    // Estados da UI
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
+    // Configuração condicional do Firebase
     val auth = if (useFirebase) Firebase.auth else null
     val db = if (useFirebase) Firebase.firestore else null
 
@@ -151,6 +172,7 @@ fun LoginScreen(
                 .padding(horizontal = screenWidth*0.05f),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Logo da aplicação
             Image(
                 painter = painterResource(id = R.drawable.superid_logo),
                 contentDescription = "Logo SuperID",
@@ -161,6 +183,7 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(screenHeight * 0.01f))
 
+            // Campo de e-mail
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
@@ -170,6 +193,7 @@ fun LoginScreen(
             )
 
 
+            // Campo de senha com visualização protegida
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
@@ -181,6 +205,7 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(screenHeight*0.025f))
 
+            // Exibição de mensagens de erro
             errorMessage?.let {
                 Text(it, color = MaterialTheme.colorScheme.error)
                 Spacer(modifier = Modifier.height(screenHeight*0.025f))
@@ -188,22 +213,6 @@ fun LoginScreen(
 
             TextButton(
                 onClick = {
-//                    // Redefinição de senha via Firebase Auth
-//                    if (email.isBlank()) {
-//                        errorMessage = "Informe o e-mail para redefinir a senha."
-//                    } else {
-//                        isLoading = true
-//                        auth?.sendPasswordResetEmail(email)
-//                            ?.addOnCompleteListener { task ->
-//                                isLoading = false
-//                                if (task.isSuccessful) {
-//                                    Toast.makeText(context, "Verifique seu e-mail para redefinir a senha.", Toast.LENGTH_LONG).show()
-//                                } else {
-//                                    errorMessage = task.exception?.message ?: "Erro ao enviar e-mail de redefinição."
-//                                }
-//                            }
-//                    }
-
                     Intent(context, RecoverMasterPasswordActivity::class.java).also {
                         context.startActivity(it)
                     }
@@ -223,6 +232,7 @@ fun LoginScreen(
                     isLoading = true
                     errorMessage = null
 
+                    // Processo de autenticação com Firebase
                     auth?.signInWithEmailAndPassword(email, password)
                         ?.addOnCompleteListener { task ->
                             if (task.isSuccessful) {
@@ -237,16 +247,18 @@ fun LoginScreen(
                                             return@addOnSuccessListener
                                         }
                                         try {
+                                            // Derivação da chave criptográfica
                                             val salt = HelperCripto.decodeFromBase64(saltBase64)
-                                            // Deriva a chave da senha-mestra + salt
                                             val secretKey = HelperCripto.deriveKeyFromPassword(
                                                 password.toCharArray(),
                                                 salt
                                             )
-                                            // Guarde a chave em algum lugar seguro da memória (Singleton SessionManager em auth)
+
+                                            // Configuração da sessão
                                             SessionManager.secretKey = secretKey
                                             SessionManager.currentUid = uid
 
+                                            // Redirecionamento para tela principal
                                             isLoading = false
                                             Toast.makeText(context, "Login realizado com sucesso!", Toast.LENGTH_SHORT).show()
                                             Intent(context, MainActivity::class.java).also {
@@ -273,8 +285,10 @@ fun LoginScreen(
                     .height(screenHeight*0.07f),
                 enabled = !isLoading
             ) {
-                Text(text = if (isLoading) "Carregando..." else "Entrar",
-                    fontSize = (screenHeight*0.025f).value.sp)
+                Text(
+                    text = if (isLoading) "Carregando..." else "Entrar",
+                    fontSize = (screenHeight*0.025f).value.sp
+                )
             }
         }
     }

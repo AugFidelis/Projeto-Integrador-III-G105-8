@@ -76,3 +76,4 @@ object HelperCripto {
         Base64.decode(str, Base64.DEFAULT)
 }
 
+
