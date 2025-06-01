@@ -217,7 +217,7 @@ fun QRCodeScannerScreen(
                                 return@launch
                             }
                             val db = FirebaseFirestore.getInstance()
-                            db.collection("Login")
+                            db.collection("login")
                                 .whereEqualTo("loginToken", qr)
                                 .limit(1)
                                 .get()
