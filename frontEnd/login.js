@@ -7,10 +7,11 @@ const loadingQrMsg = document.getElementById('loading-qr-msg');
 const errorQrMsg = document.getElementById('error-qr-msg');
 
 // Configurando o firebase
-const FIREBASE_PROJECT_ID = 'teste-qrcode-e7574';
-const FUNCTIONS_EMULATOR_BASE_URL = 'http://127.0.0.1:5001'; 
+const FIREBASE_PROJECT_ID = 'projeto-integrador-3-g105-8';
+const FUNCTIONS_BASE_URL = 'https://us-central1-projeto-integrador-3-g105-8.cloudfunctions.net';
+ 
 
-const PERFORM_AUTH_URL = `${FUNCTIONS_EMULATOR_BASE_URL}/${FIREBASE_PROJECT_ID}/us-central1/performAuth`;
+const PERFORM_AUTH_URL = `${FUNCTIONS_BASE_URL}/performAuth`;
 const PARTNER_API_KEY = 'minha_chave_secreta';
 const PARTNER_URL = 'https://meu.site.parceiro.com';
 

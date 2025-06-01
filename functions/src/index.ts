@@ -2,17 +2,26 @@ import {onRequest} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import * as crypto from "crypto";
 import * as QRCode from "qrcode";
-import { initializeApp } from "firebase-admin/app";
-import { getFirestore, Timestamp } from "firebase-admin/firestore";
-
+import {initializeApp} from "firebase-admin/app";
+import {getFirestore, Timestamp} from "firebase-admin/firestore";
 
 initializeApp();
 const db = getFirestore();
 
 export const performAuth = onRequest(async (req, res) => {
-  const { apiKey, url } = req.body;
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  const {apiKey, url} = req.body;
 
   if (!apiKey || !url) {
+    logger.warn("performAuth: Missing apiKey or url in request body.");
     res.status(400).send("Missing apiKey or url");
     return;
   }
@@ -25,7 +34,7 @@ export const performAuth = onRequest(async (req, res) => {
       .get();
 
     if (snapshot.empty) {
-      logger.warn("Parceiro não autorizado:", { apiKey, url });
+      logger.warn("performAuth: Unauthorized partner detected.", {apiKey, url});
       res.status(403).send("Unauthorized partner");
       return;
     }
@@ -40,19 +49,34 @@ export const performAuth = onRequest(async (req, res) => {
       attempts: 0,
     });
 
+    logger.info("performAuth: loginToken gerado e salvo.", {loginToken});
+
     const qrCodeBase64 = await generateQRCodeBase64(loginToken);
 
-    res.status(200).send({ qrBase64: qrCodeBase64, loginToken: loginToken });
+    logger.info("performAuth: QR Code Base64 gerado com sucesso.", {length: qrCodeBase64.length});
+
+    res.status(200).send({qrBase64: qrCodeBase64, loginToken: loginToken});
+
   } catch (error) {
-    logger.error("Erro em performAuth", error);
+    logger.error("performAuth: Erro durante a execução da função.", error);
     res.status(500).send("Internal server error");
   }
 });
 
 export const getLoginStatus = onRequest(async (req, res) => {
-  const { loginToken } = req.body;
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  const {loginToken} = req.body;
 
   if (!loginToken) {
+    logger.warn("getLoginStatus: Missing loginToken in request body.");
     res.status(400).send("Missing loginToken");
     return;
   }
@@ -62,6 +86,7 @@ export const getLoginStatus = onRequest(async (req, res) => {
     const loginSnap = await loginDocRef.get();
 
     if (!loginSnap.exists) {
+      logger.warn("getLoginStatus: Token not found.", {loginToken});
       res.status(404).send("Token not found");
       return;
     }
@@ -72,8 +97,9 @@ export const getLoginStatus = onRequest(async (req, res) => {
     const diff = now.seconds - created.seconds;
 
     if (diff > 60 || (loginData?.attempts ?? 0) >= 3) {
+      logger.info("getLoginStatus: Token expired or too many attempts. Deleting.", {loginToken});
       await loginDocRef.delete();
-      res.status(410).send({ status: "expired" });
+      res.status(410).send({status: "expired"});
       return;
     }
 
@@ -82,20 +108,29 @@ export const getLoginStatus = onRequest(async (req, res) => {
     });
 
     if (loginData?.user) {
-      res.status(200).send({ status: "success", uid: loginData.user });
+      logger.info("getLoginStatus: Login successful.", {loginToken, uid: loginData.user});
+      res.status(200).send({status: "success", uid: loginData.user});
     } else {
-      res.status(202).send({ status: "pending" });
+      logger.info("getLoginStatus: Login pending.", {loginToken});
+      res.status(202).send({status: "pending"});
     }
   } catch (error) {
-    logger.error("Erro em getLoginStatus", error);
+    logger.error("getLoginStatus: Erro durante a execução da função.", error);
     res.status(500).send("Internal server error");
   }
 });
 
 function generateRandomBase64(length: number): string {
-  return crypto.randomBytes(length).toString("base64url").slice(0, length);
+  return crypto.randomBytes(Math.ceil(length * 3 / 4)).toString("base64url").slice(0, length);
 }
 
 async function generateQRCodeBase64(text: string): Promise<string> {
-  return await QRCode.toDataURL(text);
+  logger.info("generateQRCodeBase64: Gerando QR Code para o texto:", {text});
+  try {
+    const dataUrl = await QRCode.toDataURL(text);
+    return dataUrl;
+  } catch (qrError) {
+    logger.error("generateQRCodeBase64: Erro ao gerar QR Code.", qrError);
+    throw qrError;
+  }
 }
