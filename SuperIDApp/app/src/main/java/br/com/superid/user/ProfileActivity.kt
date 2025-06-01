@@ -73,7 +73,15 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.ktx.Firebase
 
-
+/**
+ * Activity para exibir e gerenciar informações do perfil do usuário.
+ *
+ * Funcionalidades:
+ * - Exibe informações da conta do usuário (nome, e-mail, status de verificação)
+ * - Permite o reenvio da verificação de e-mail
+ * - Oferece opções para redefinir a senha mestra e fazer logout
+ * - Capacidade de troca de tema
+ */
 class ProfileActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -115,7 +123,13 @@ class ProfileActivity : ComponentActivity() {
         }
     }
 
-
+/**
+ * Tela de perfil do usuario
+ *
+ * @param onToggleTheme Callback para alternar entre tema claro/escuro
+ * @param isDarkTheme Boolean que indica se o tema escuro está ativo no momento
+ * @param modifier Modifier para personalizar o layout
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
@@ -129,9 +143,11 @@ fun ProfileScreen(
     val currentUser = auth.currentUser
     val db = FirebaseFirestore.getInstance()
 
+    // Dimensões responsivas
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
 
+    // Estados da UI
     var expanded by remember { mutableStateOf(false) }
 
     var userName by remember { mutableStateOf("") }
@@ -142,9 +158,11 @@ fun ProfileScreen(
     // Carrega os dados do usuário logado a partir do Firestore
     LaunchedEffect(currentUser?.uid) {
         currentUser?.uid?.let { uid ->
+            // Busca os dados do usuário no Firestore
             db.collection("Users").document(uid).get()
                 .addOnSuccessListener { document ->
                     if (document != null && document.exists()) {
+                        // Atualiza os estados com os dados do usuário
                         userName = document.getString("Nome") ?: "Nome não disponível"
                         userEmail = Firebase.auth.currentUser?.email ?: "E-mail não disponível"
                     }
@@ -222,10 +240,13 @@ fun ProfileScreen(
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Column(modifier = Modifier.padding(screenHeight*0.015f)) {
+                    // Exibe o nome do usuário
                     Text("Nome: $userName")
 
+                    // Exibe o email do usuário
                     Spacer(modifier = Modifier.height(screenHeight * 0.015f))
 
+                    // Seção de verificação de email
                     Text("E-mail: $userEmail")
 
                     Spacer(modifier = Modifier.height(screenHeight * 0.015f))
@@ -239,6 +260,7 @@ fun ProfileScreen(
                             color = Color.Green
                         )
                     } else {
+                        // opção para reenviar verificação
                         Column {
                             Text(
                                 "Não verificado [Verificar agora]",
@@ -265,6 +287,7 @@ fun ProfileScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Button(
+                                // atualiza o status de verificação
                                 onClick = {
                                     currentUser?.reload()?.addOnSuccessListener {
                                         isEmailVerified = currentUser.isEmailVerified
@@ -314,8 +337,9 @@ fun ProfileScreen(
 
                 OutlinedButton(
                     onClick = {
-                        auth.signOut()
+                        auth.signOut()// Faz logout do Firebase
 
+                        // Redireciona para a tela de welcome e limpa a pilha de activities
                         val intent = Intent(context, WelcomeActivity::class.java)
                         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                         context.startActivity(intent)

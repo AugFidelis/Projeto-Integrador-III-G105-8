@@ -73,6 +73,15 @@ import br.com.superid.R
 import br.com.superid.auth.SignUpActivity
 import br.com.superid.ui.theme.SuperIDTheme
 
+/**
+ * Activity que exibe os Termos de Uso do aplicativo SuperID.
+ *
+ * Funcionalidades principais:
+ * - Apresenta os termos de uso em cards deslizáveis
+ * - Permite ao usuário aceitar os termos antes de continuar
+ * - Oferece opção de alternar entre tema claro e escuro
+ * - Bloqueia o botão de continuar até que os termos sejam aceitos
+ */
 class TermsOfUseActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -112,6 +121,13 @@ class TermsOfUseActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Tela de Termos de Uso do aplicativo.
+ *
+ * @param onToggleTheme Callback para alternar entre tema claro/escuro
+ * @param isDarkTheme Boolean que indica se o tema escuro está ativo
+ * @param modifier Modifier para personalizar o layout
+ */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun TermsOfUseScreen(
@@ -119,10 +135,12 @@ fun TermsOfUseScreen(
     isDarkTheme: Boolean,
     modifier: Modifier = Modifier
 ) {
+    // Dimensões responsivas
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val context = LocalContext.current
 
+    // Estados da UI
     var expanded by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -191,6 +209,7 @@ fun TermsOfUseScreen(
                     lineHeight = (screenHeight * 0.03f).value.sp
                 )
 
+                // Data class para representar cada card de termos
                 data class TermsCard(
                     val id: Int,
                     val title: String,
@@ -198,6 +217,7 @@ fun TermsOfUseScreen(
                     val bulletPoints: List<String>
                 )
 
+                // Lista de termos a serem exibidos
                 val termsCards = listOf(
                     TermsCard(
                         id = 1,
@@ -336,6 +356,7 @@ fun TermsOfUseScreen(
                 Spacer(modifier = Modifier.height(screenHeight * 0.04f))
                 //Spacer(modifier = Modifier.weight(0.5f))
 
+                // Seção de aceitação dos termos (posicionada na parte inferior)
                 var isAccepted by remember { mutableStateOf(false) }
 
                 Column(

@@ -71,6 +71,23 @@ class ResetMasterPasswordActivity : ComponentActivity() {
         }
     }
 }
+/**
+ * Tela para redefinição de senha mestre do usuário autenticado.
+ *
+ * Fluxo principal:
+ * - Requer autenticação do usuário com a senha atual
+ * - Valida os campos de senha atual e nova senha
+ * - Atualiza a senha no Firebase Authentication
+ *
+ * @param onToggleTheme Callback para alternar entre temas claro/escuro
+ * @param isDarkTheme Indica se o tema escuro está ativo
+ * @param modifier Modificador para personalização do layout
+ *
+ * @throws FirebaseAuthException Em casos de:
+ * - Senha atual incorreta
+ * - Falha na conexão com Firebase
+ * - Nova senha não atende requisitos de segurança
+ */
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,9 +100,11 @@ fun ResetMasterPasswordScreen(
     val auth = FirebaseAuth.getInstance()
     val user = auth.currentUser
 
+    // Dimensões responsivas
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
 
+    // Estados da UI
     var expanded by remember { mutableStateOf(false) }
 
     var currentPassword by remember { mutableStateOf("") }
@@ -155,6 +174,7 @@ fun ResetMasterPasswordScreen(
 
                 Spacer(modifier = Modifier.height(screenHeight * 0.03f))
 
+                // Campo: Senha atual
                 Text(text = "Senha atual",
                     modifier = Modifier.align(Alignment.Start))
                 OutlinedTextField(
@@ -167,6 +187,7 @@ fun ResetMasterPasswordScreen(
 
                 Spacer(modifier = Modifier.height(screenHeight * 0.02f))
 
+                // Campo: Nova Senha
                 Text("Nova senha",
                     modifier = Modifier.align(Alignment.Start))
                 OutlinedTextField(
@@ -181,6 +202,7 @@ fun ResetMasterPasswordScreen(
 
                 Button(
                     onClick = {
+                        // Validação básica
                         if (currentPassword.isBlank() || newPassword.isBlank()) {
                             Toast.makeText(context, "Preencha todos os campos para continuar.", Toast.LENGTH_LONG).show()
                             return@Button
@@ -190,8 +212,10 @@ fun ResetMasterPasswordScreen(
                             isLoading = true
                             val credential = EmailAuthProvider.getCredential(user.email!!, currentPassword)
 
+                            // Processo de redefinição
                             user.reauthenticate(credential)
                                 .addOnSuccessListener {
+                                    // Atualização da senha
                                     user.updatePassword(newPassword)
                                         .addOnSuccessListener {
                                             isLoading = false

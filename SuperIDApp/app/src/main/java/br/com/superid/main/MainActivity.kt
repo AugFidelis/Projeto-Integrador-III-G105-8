@@ -48,6 +48,16 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 
+/**
+ * Activity principal do aplicativo que exibe e gerencia as senhas salvas.
+ *
+ * Funcionalidades:
+ * - Listagem de senhas por categoria
+ * - Adição/edição/exclusão de senhas
+ * - Filtro por categorias
+ * - Gerenciamento de temas (claro/escuro)
+ * - Scanner de QR Code para login rápido
+ */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,6 +67,7 @@ class MainActivity : ComponentActivity() {
             val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
             var isDarkTheme by remember { mutableStateOf(prefs.getBoolean("is_dark_theme", systemDark)) }
 
+            // Observador para atualizar o tema quando a activity for retomada
             val lifecycleOwner = LocalLifecycleOwner.current
             DisposableEffect(lifecycleOwner) {
                 val observer = LifecycleEventObserver { _, event ->
@@ -88,6 +99,14 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Tela principal que exibe a lista de senhas e funcionalidades relacionadas.
+ *
+ * @param onToggleTheme Callback para alternar entre tema claro/escuro
+ * @param isDarkTheme Indica se o tema escuro está ativo
+ * @param modifier Modificador para customização do layout
+ */
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
@@ -95,15 +114,18 @@ fun MainScreen(
     isDarkTheme: Boolean,
     modifier: Modifier = Modifier
 ){
+    // Configuração do Firebase e dados do usuário
     val auth = Firebase.auth
     val db = Firebase.firestore
     val uid = SessionManager.currentUid ?: auth.currentUser?.uid.orEmpty()
     val secretKey = SessionManager.secretKey
 
+    // Dimensões responsivas
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val context = LocalContext.current
 
+    // Estados da UI
     var expanded by remember { mutableStateOf(false) }
 
     var categorias by remember { mutableStateOf(listOf<String>()) }
@@ -114,6 +136,7 @@ fun MainScreen(
     var filtroSelecionado by remember { mutableStateOf("") }
     var categoriaFiltrada by remember { mutableStateOf("Todas") }
 
+    // Modelo de dados para as senhas
     data class SenhaCard(
         val id: String,
         val title: String,

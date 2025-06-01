@@ -33,6 +33,16 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import java.nio.charset.StandardCharsets
 
+/**
+ * Activity para edição de senhas salvas no aplicativo.
+ *
+ * Funcionalidades:
+ * - Carrega os dados existentes da senha selecionada
+ * - Permite editar todos os campos (nome, login, senha, descrição, categoria)
+ * - Criptografa os dados sensíveis antes de salvar
+ * - Mantém a data de criação original
+ * - Valida campos obrigatórios antes de salvar
+ */
 class EditPasswordActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -76,6 +86,14 @@ class EditPasswordActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Tela de edição de senha com formulário completo.
+ *
+ * @param docId ID do documento da senha no Firestore
+ * @param onToggleTheme Callback para alternar entre tema claro/escuro
+ * @param isDarkTheme Indica se o tema escuro está ativo
+ * @param modifier Modificador para customização do layout
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditPasswordScreen(
@@ -84,21 +102,25 @@ fun EditPasswordScreen(
     isDarkTheme: Boolean,
     modifier: Modifier = Modifier
 ) {
+    // Configuração do Firebase e dados do usuário
     val auth = Firebase.auth
     val db = Firebase.firestore
     val uid = SessionManager.currentUid ?: auth.currentUser?.uid.orEmpty()
     val secretKey = SessionManager.secretKey
 
+    // Dimensões responsivas
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val context = LocalContext.current
 
+    // Estados da UI
     var expanded by remember { mutableStateOf(false) }
 
     var categorias by remember { mutableStateOf(listOf<String>()) }
     var categoriaSelecionada by remember { mutableStateOf<String?>(null) }
     var expandedMenu by remember { mutableStateOf(false) }
 
+    // Campos do formulário
     var nomeSenha by remember { mutableStateOf("") }
     var login by remember { mutableStateOf("") }
     var senha by remember { mutableStateOf("") }

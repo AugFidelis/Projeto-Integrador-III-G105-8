@@ -60,6 +60,16 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 
+/**
+ * Activity para adição de novas senhas no aplicativo.
+ *
+ * Funcionalidades:
+ * - Formulário para cadastro de novas credenciais
+ * - Criptografia segura dos dados sensíveis
+ * - Seleção de categorias existentes
+ * - Geração de token de acesso único
+ * - Validação de campos obrigatórios
+ */
 class AddPasswordActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -100,6 +110,13 @@ class AddPasswordActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Tela de adição de nova senha com formulário completo.
+ *
+ * @param onToggleTheme Callback para alternar entre tema claro/escuro
+ * @param isDarkTheme Indica se o tema escuro está ativo
+ * @param modifier Modificador para customização do layout
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddPasswordScreen(
@@ -107,26 +124,31 @@ fun AddPasswordScreen(
     isDarkTheme: Boolean,
     modifier: Modifier = Modifier
 ){
+    // Configuração do Firebase e dados do usuário
     val auth = Firebase.auth
     val db = Firebase.firestore
     val uid = SessionManager.currentUid ?: auth.currentUser?.uid.orEmpty()
     val secretKey = SessionManager.secretKey
 
+    // Dimensões responsivas
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val context = LocalContext.current
 
+    // Estados da UI
     var expanded by remember { mutableStateOf(false) }
 
     var categorias by remember { mutableStateOf(listOf<String>()) }
     var categoriaSelecionada by remember { mutableStateOf<String?>(null) }
     var expandedMenu by remember { mutableStateOf(false) }
 
+    // Campos do formulário
     var nomeSenha by remember { mutableStateOf("") }
     var login by remember { mutableStateOf("") }
     var senha by remember { mutableStateOf("") }
     var descricao by remember { mutableStateOf("") }
 
+    // Carrega as categorias disponíveis do Firestore
     LaunchedEffect(uid) { //Atualiza as categorias puxando do firestore quando a página é aberta
         if (uid.isNotBlank()) {
             db.collection("Users")
@@ -231,6 +253,7 @@ fun AddPasswordScreen(
 
             Spacer(modifier = Modifier.height(screenHeight * 0.015f))
 
+            // Campo: Nome da senha
             Text("Nome da senha", modifier = Modifier.padding(bottom = screenHeight * 0.003f))
             OutlinedTextField(
                 value = nomeSenha,
@@ -241,6 +264,7 @@ fun AddPasswordScreen(
 
             Spacer(modifier = Modifier.height(screenHeight * 0.012f))
 
+            // Campo: Login
             Text("Login (opcional)", modifier = Modifier.padding(bottom = screenHeight * 0.003f))
             OutlinedTextField(
                 value = login,
@@ -251,6 +275,7 @@ fun AddPasswordScreen(
 
             Spacer(modifier = Modifier.height(screenHeight * 0.012f))
 
+            // Campo: Senha
             Text("Senha", modifier = Modifier.padding(bottom = screenHeight * 0.003f))
             OutlinedTextField(
                 value = senha,
@@ -261,6 +286,7 @@ fun AddPasswordScreen(
 
             Spacer(modifier = Modifier.height(screenHeight * 0.012f))
 
+            // Campo: Descrição
             Text("Descrição (opcional)", modifier = Modifier.padding(bottom = screenHeight * 0.003f))
             OutlinedTextField(
                 value = descricao,
@@ -275,6 +301,7 @@ fun AddPasswordScreen(
 
             Button(
                 onClick = {
+                    // Validação dos campos obrigatórios
                     if (categoriaSelecionada.isNullOrBlank() || nomeSenha.isBlank() || senha.isBlank()) {
                         Toast.makeText(context, "Preencha todos os campos obrigatórios!", Toast.LENGTH_SHORT).show()
                         return@Button
@@ -295,8 +322,10 @@ fun AddPasswordScreen(
                     val senhaCriptografadaBytes = HelperCripto.encryptData(senhaBytes, secretKey)
                     val senhaCriptografadaBase64 = HelperCripto.encodeToBase64(senhaCriptografadaBytes)
 
+                    // Gera token de acesso único
                     val accessToken = generateAccessToken()
 
+                    // Prepara os dados para salvar no Firestore
                     val novaSenha = hashMapOf(
                         "Categoria" to categoriaSelecionada,
                         "Nome" to nomeSenha,
@@ -307,6 +336,7 @@ fun AddPasswordScreen(
                         "accessToken" to accessToken
                     )
 
+                    // Salva no Firestore
                     db.collection("Users")
                         .document(uid)
                         .collection("Senhas")
@@ -332,7 +362,11 @@ fun AddPasswordScreen(
         }
     }
 }
-
+/**
+ * Gera um token de acesso aleatório seguro em formato Base64.
+ *
+ * @return String com token de 256 caracteres (aproximadamente)
+ */
 fun generateAccessToken(): String {
     val byteCount = 192 // 192 bytes = 256 caracteres base64 (aproximadamente, pois base64: (n*4)/3)
     val randomBytes = ByteArray(byteCount)

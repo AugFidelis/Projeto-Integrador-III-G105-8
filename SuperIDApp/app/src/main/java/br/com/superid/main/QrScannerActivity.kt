@@ -59,6 +59,13 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.mlkit.vision.barcode.BarcodeScanner
 
+/**
+ * Activity para autenticação via leitura de QR Code contendo token customizado do Firebase.
+ *
+ * Requer permissão de câmera para funcionamento.
+ * Ao ler um QR Code válido, realiza login automático e redireciona para MainActivity.
+ */
+
 class QrScannerActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -99,6 +106,11 @@ class QrScannerActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Tela principal do scanner de QR Code.
+ *
+ * @param onCodeScanned Callback executado após leitura bem-sucedida do QR Code
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QRCodeScannerScreen(
@@ -285,7 +297,12 @@ fun QRCodeScannerScreen(
         }
     }
 }
-
+/**
+ * Componente de visualização da câmera com capacidade de detectar QR Codes.
+ *
+ * @param onQrCodeScanned Callback quando um QR Code é detectado
+ * @param modifier Modificador Compose para customização
+ */
 
 @Composable
 fun CameraPreview(
@@ -295,6 +312,7 @@ fun CameraPreview(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
+    // AndroidView que integra a visualização nativa da câmera
     AndroidView(
         factory = { ctx ->
             PreviewView(ctx).apply {
@@ -328,7 +346,10 @@ fun CameraPreview(
                 )
 
                 try {
+                    // Garante que nada esteja ativo antes de iniciar novamente
                     cameraProvider.unbindAll()
+
+                    // Liga os casos de uso à câmera
                     cameraProvider.bindToLifecycle(
                         lifecycleOwner,
                         cameraSelector,
@@ -350,7 +371,9 @@ fun CameraPreview(
         }
     )
 }
-
+/**
+ * Processa a imagem capturada pela câmera para detectar QR Codes usando ML Kit.
+ */
 class QrCodeAnalyzer(
     private val scanner: BarcodeScanner,
     private val onQrCodeScanned: (String) -> Unit

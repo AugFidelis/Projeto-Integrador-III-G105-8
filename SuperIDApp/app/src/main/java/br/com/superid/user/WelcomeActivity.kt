@@ -74,6 +74,15 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 
+/**
+ * Activity de boas-vindas do aplicativo SuperID.
+ *
+ * Funcionalidades principais:
+ * - Apresenta um carrossel com cards explicativos sobre as funcionalidades do app
+ * - Oferece opções de cadastro e login
+ * - Permite alternar entre tema claro e escuro
+ * - Layout responsivo que se adapta a diferentes tamanhos de tela
+ */
 class WelcomeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -113,6 +122,13 @@ class WelcomeActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Tela de boas-vindas do aplicativo.
+ *
+ * @param onToggleTheme Callback para alternar entre tema claro/escuro
+ * @param isDarkTheme Boolean que indica se o tema escuro está ativo
+ * @param modifier Modifier para personalizar o layout
+ */
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun WelcomeScreen(
@@ -120,6 +136,7 @@ fun WelcomeScreen(
     isDarkTheme: Boolean,
     modifier: Modifier = Modifier
 ) {
+    // Dimensões responsivas
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     //Pega a altura e largura da tela em dp para incluir tamanhos consistentes com o tamanho da tela do dispositivo
@@ -173,6 +190,7 @@ fun WelcomeScreen(
             val lazyListState = rememberLazyListState()
             val snappingBehavior = rememberSnapFlingBehavior(lazyListState)
 
+            // Data class para representar cada card de boas-vindas
             data class WelcomeCard(
                 val id: Int,
                 val imageResource: Int,
@@ -180,6 +198,7 @@ fun WelcomeScreen(
                 val imageDescription: String
             )
 
+            // Lista de cards explicativos
             val welcomeCards = listOf(
                 WelcomeCard(
                     id = 1,
@@ -217,6 +236,7 @@ fun WelcomeScreen(
                 horizontalArrangement = Arrangement.Center
 
             ) {
+                // Itera sobre cada card de boas-vindas
                 items(welcomeCards) { card ->
                     Card(modifier = Modifier
                         .padding(horizontal = screenWidth * 0.02f)

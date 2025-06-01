@@ -68,6 +68,16 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 
+/**
+ * Activity para gerenciamento de categorias de senhas.
+ *
+ * Funcionalidades:
+ * - Listagem de todas as categorias existentes
+ * - Adição de novas categorias
+ * - Edição de nomes de categorias
+ * - Exclusão de categorias (exceto as padrões)
+ * - Integração com Firebase Firestore
+ */
 class EditCategoriesActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -108,6 +118,13 @@ class EditCategoriesActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Tela de edição de categorias com lista interativa.
+ *
+ * @param onToggleTheme Callback para alternar entre tema claro/escuro
+ * @param isDarkTheme Indica se o tema escuro está ativo
+ * @param modifier Modificador para customização do layout
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditCategoriesScreen(
@@ -115,10 +132,12 @@ fun EditCategoriesScreen(
     isDarkTheme: Boolean,
     modifier: Modifier = Modifier
 ){
+    // Dimensões responsivas
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val context = LocalContext.current
 
+    // Estados da UI
     var expanded by remember { mutableStateOf(false) }
 
     var showDialog by remember { mutableStateOf(false) }
@@ -179,12 +198,15 @@ fun EditCategoriesScreen(
             )
         }
     ) { innerPadding ->
+        // Configuração do Firebase
         val auth = Firebase.auth
         val db = Firebase.firestore
         val uid = auth.currentUser?.uid ?: ""
 
+        // Modelo de dados para categorias
         data class Categoria(val id: String, val nome: String)
 
+        // Estados para gerenciamento de categorias
         var categories by remember { mutableStateOf<List<Categoria>>(emptyList()) }
         var isLoading by remember { mutableStateOf(true) }
         var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -209,6 +231,7 @@ fun EditCategoriesScreen(
                 }
         }
 
+        // Carrega as categorias ao iniciar
         LaunchedEffect(uid) {
             if (uid.isNotBlank()) {
                 fetchCategories()
@@ -435,6 +458,7 @@ fun EditCategoriesScreen(
                         .padding(top = screenHeight * 0.04f)
                 )
             } else {
+                // Lista de categorias
                 LazyColumn(
                     contentPadding = PaddingValues(screenHeight*0.01f)
                 ) {
@@ -464,6 +488,7 @@ fun EditCategoriesScreen(
                                     style = MaterialTheme.typography.titleMedium
                                 )
 
+                                // Mostra menu apenas para categorias não padrão
                                 if (categoria.nome != "Sites da Web") {
                                     // Botão de opções
                                     Box {
