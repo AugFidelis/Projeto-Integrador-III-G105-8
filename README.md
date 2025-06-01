@@ -25,5 +25,19 @@ O SuperID consiste em um **ecossistema de autenticação sem senhas**, baseado e
 - Integração com sites parceiros para **login via QR Code**, sem uso de senha.
 - Recuperação de senha mestre via email (se o email tiver sido previamente validado).
 
+### SITE
+
+O site é um protótipo exemplo da marca SuperID que tem como base simular utilizando o sistema real um login com QR CODE de nossos sites parceiros.
+A documentação abaixo é o guia para rodar o site.
+
+- Abra todo o conteúdo do website em uma pasta.
+- Suba o frontend no Live Server.
+- Execute o comando "npm install -g firebase-tools".
+- Após isso, execute o comando "firebase login".
+- Em seguida adicione o projeto utilizando o comando "firebase use --add seu_projeto".
+- Entre na pasta functions com o comando "cd functions".
+- Utilize o firebase deploy para conectar todas as funções a nuvem.
+- Rode o npm start.
+
 
 Link para o protótipo no figma: https://www.figma.com/design/1Z5GHg0xvMkk7qxFhQr74p/Aplicativo-SuperID---G105-8?node-id=0-1&t=xX35lx8ZxYUuBUku-1
