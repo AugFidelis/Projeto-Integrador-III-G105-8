@@ -55,6 +55,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.LifecycleOwner
+import com.google.firebase.Timestamp
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.mlkit.vision.barcode.BarcodeScanner
 
 class QrScannerActivity : ComponentActivity() {
@@ -141,9 +143,6 @@ fun QRCodeScannerScreen(
 
     var expanded by remember { mutableStateOf(false) }
 
-    var isProcessing by remember { mutableStateOf(false) }
-    var message by remember { mutableStateOf<String?>(null) }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -197,6 +196,9 @@ fun QRCodeScannerScreen(
             if (hasCameraPermission) {
                 var scannedValue by remember { mutableStateOf<String?>(null) }
                 var lastTriedValue by remember { mutableStateOf<String?>(null) }
+                var isProcessing by remember { mutableStateOf(false) }
+                var message by remember { mutableStateOf<String?>(null) }
+
                 CameraPreview(
                     modifier = Modifier.fillMaxSize(),
                     onQrCodeScanned = { qrCode -> scannedValue = qrCode }
@@ -208,22 +210,46 @@ fun QRCodeScannerScreen(
                         lastTriedValue = qr
                         coroutineScope.launch(Dispatchers.IO) {
                             val auth = FirebaseAuth.getInstance()
-                            auth.signInWithCustomToken(qr)
-                                .addOnCompleteListener { task ->
-                                    if (task.isSuccessful) {
-                                        Log.d("QRLogin", "Login via QR Code concluído com sucesso.")
-                                        Toast.makeText(context, "Login autenticado com sucesso!", Toast.LENGTH_SHORT).show()
-                                        // Redireciona para a MainActivity
-                                        Intent(context, MainActivity::class.java).also {
-                                            it.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                            context.startActivity(it)
+                            val user = auth.currentUser
+                            if (user == null) {
+                                message = "Usuário não autenticado! Faça login primeiro."
+                                isProcessing = false
+                                return@launch
+                            }
+                            val db = FirebaseFirestore.getInstance()
+                            db.collection("Login")
+                                .whereEqualTo("loginToken", qr)
+                                .limit(1)
+                                .get()
+                                .addOnSuccessListener { querySnapshot ->
+                                    if (!querySnapshot.isEmpty) {
+                                        val doc = querySnapshot.documents.first()
+                                        doc.reference.update(
+                                            mapOf(
+                                                "user" to user.uid,
+                                                "dataHoraLogin" to Timestamp.now()
+                                            )
+                                        ).addOnSuccessListener {
+                                            Toast.makeText(context, "Login sem senha confirmado!", Toast.LENGTH_SHORT).show()
+                                            Intent(context, MainActivity::class.java).also {
+                                                it.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                                context.startActivity(it)
+                                            }
+                                            (context as? ComponentActivity)?.finish()
+                                        }.addOnFailureListener { e ->
+                                            Log.e("QRLogin", "Erro ao atualizar login.", e)
+                                            message = "Erro ao registrar login."
+                                            isProcessing = false
                                         }
-                                        (context as? ComponentActivity)?.finish()
                                     } else {
-                                        Log.e("QRLogin", "Falha no login via QR Code.", task.exception)
-                                        message = "Falha na autenticação do QR Code."
+                                        message = "QR Code inválido ou expirado."
                                         isProcessing = false
                                     }
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.e("QRLogin", "Erro ao buscar login.", e)
+                                    message = "Erro ao acessar o banco de dados."
+                                    isProcessing = false
                                 }
                         }
                     }
