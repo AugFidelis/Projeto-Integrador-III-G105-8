@@ -13,6 +13,7 @@ import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,6 +38,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -61,197 +63,230 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.superid.R
 import br.com.superid.auth.LoginActivity
-import br.com.superid.user.ui.theme.SuperIDTheme
+import br.com.superid.ui.theme.SuperIDTheme
 import kotlin.math.roundToInt
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.saveable.rememberSaveable
+import android.content.Context
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 
 class WelcomeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SuperIDTheme {
-                SuperIDApp()
+            val systemDark = isSystemInDarkTheme()
+            val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
+            var isDarkTheme by remember { mutableStateOf(prefs.getBoolean("is_dark_theme", systemDark)) }
+
+            val lifecycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME) {
+                        isDarkTheme = prefs.getBoolean("is_dark_theme", systemDark)
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
             }
-        }
-    }
-}
 
-@Preview(showBackground = true)
-@Composable
-fun SuperIDApp() {
-    WelcomeScreen(modifier = Modifier
-        .fillMaxSize()
-        .wrapContentSize(Alignment.Center))
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-fun WelcomeScreen(modifier: Modifier = Modifier) {
-    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    //Pega a altura e largura da tela em dp para incluir tamanhos consistentes com o tamanho da tela do dispositivo
-
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ){
-        var expanded by remember { mutableStateOf(false) }
-
-        IconButton(onClick = { expanded = !expanded },
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(screenHeight*0.02f)
-                .padding(top = screenHeight*0.03f)
-        ) {
-            Icon(
-                imageVector = Icons.Default.MoreVert,
-                contentDescription = "Ícone do menu"
-            )
-
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
+            SuperIDTheme(
+                darkTheme = isDarkTheme
             ) {
-                DropdownMenuItem(
-                    onClick = {},
-                    text = { Text("Ativar modo claro") }
+                WelcomeScreen(modifier = Modifier
+                    .fillMaxSize()
+                    .wrapContentSize(),
+
+                    onToggleTheme = {
+                        isDarkTheme = !isDarkTheme
+                        prefs.edit().putBoolean("is_dark_theme", isDarkTheme).apply() },
+                    isDarkTheme = isDarkTheme
                 )
             }
         }
     }
+}
 
-    Column(horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .padding(bottom = 40.dp, top = screenHeight*0.03f)
-            .fillMaxWidth()
-        ) {
-        Image(painter = painterResource(id = R.drawable.superid_logo),
-            contentDescription = "Logo SuperID",
-            colorFilter = ColorFilter.tint(Color.Black),
-            //colorFilter temporário, enquanto fundo escuro não é adicionado
-            modifier = Modifier.size(screenHeight*0.25f)
-        )
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@Composable
+fun WelcomeScreen(
+    onToggleTheme: () -> Unit,
+    isDarkTheme: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+    //Pega a altura e largura da tela em dp para incluir tamanhos consistentes com o tamanho da tela do dispositivo
 
-        Spacer(modifier = Modifier.weight(0.5f))
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {},
+                actions = {
+                    var expanded by remember { mutableStateOf(false) }
 
-        //---------------------------------------------------------------------------------
-
-        val lazyListState = rememberLazyListState()
-        val snappingBehavior = rememberSnapFlingBehavior(lazyListState)
-
-        data class WelcomeCard(
-            val id: Int,
-            val imageResource: Int,
-            val text: String,
-            val imageDescription: String
-        )
-
-        val welcomeCards = listOf(
-            WelcomeCard(
-                id = 1,
-                imageResource = R.drawable.welcomelock,
-                text = "Com o SuperID, você armazena todas " +
-                        "as suas senhas em um só lugar, de forma " +
-                        "segura e acessível. Não se preocupe mais em " +
-                        "lembrar dezenas de códigos diferentes.",
-                imageDescription = "Ícone de cadeado"
-            ),
-            WelcomeCard(
-                id = 2,
-                imageResource = R.drawable.welcomeqr,
-                text = "Cansado de digitar senhas? Com o SuperID, você pode " +
-                        "acessar sites parceiros usando apenas o seu celular " +
-                        "e um QR Code. É rápido, seguro e sem complicações.",
-                imageDescription = "Ícone de QR Code"
-            ),
-            WelcomeCard(
-                id = 3,
-                imageResource = R.drawable.welcomeopenfolder,
-                text = "Agrupe suas senhas por categorias como sites, aplicativos ou " +
-                        "dispositivos físicos. Tudo organizado para você encontrar " +
-                        "o que precisa com facilidade.",
-                imageDescription = "Ícone de Pasta Aberta"
-            )
-        )
-
-        LazyRow(
-            modifier = Modifier
-                .fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = screenWidth * 0.055f),
-            state = lazyListState,
-            flingBehavior = snappingBehavior,
-            horizontalArrangement = Arrangement.Center
-
-        ) {
-            items(welcomeCards) { card ->
-                Card(modifier = Modifier
-                    .padding(horizontal = screenWidth * 0.02f)
-                    //.fillMaxWidth()
-                    .width(screenWidth * 0.85f)
-                    .heightIn(max = screenHeight * 0.45f)
-                    .align(alignment = Alignment.CenterHorizontally)
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(30.dp)
-                    ) {
-                        Spacer(modifier = Modifier.weight(1f))
-
-                        Image(painter = painterResource(card.imageResource),
-                            contentDescription = card.imageDescription,
-                            colorFilter = ColorFilter.tint(Color.Black),
-                            modifier = Modifier.size(screenWidth*0.3f)
+                    IconButton(onClick = { expanded = !expanded }) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Ícone do menu"
                         )
 
-                        Spacer(modifier = Modifier.weight(2f))
-
-                        Text(textAlign = TextAlign.Center,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = (screenHeight*0.022f).value.sp,
-                            text = card.text,
-                            lineHeight = (screenHeight * 0.03f).value.sp
-                        )
-
-                        Spacer(modifier = Modifier.weight(1f))
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                onClick = {
+                                    onToggleTheme()
+                                    expanded = false
+                                },
+                                text = { Text(if (isDarkTheme) "Ativar modo claro" else "Ativar modo escuro") }
+                            )
+                        }
                     }
                 }
-            }
-
+            )
         }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        val context = LocalContext.current
-
-        Column(
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+    ){ innerPadding ->
+        Column(horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .padding(innerPadding)
+                .padding(bottom = screenHeight*0.015f)
+                .fillMaxWidth()
         ) {
-            Button(onClick = {
-                Intent(context, TermsOfUseActivity::class.java).also {
-                    context.startActivity(it)
-                }
-            },
+            Image(painter = painterResource(id = R.drawable.superid_logo),
+                contentDescription = "Logo SuperID",
+                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
+                modifier = Modifier.size(screenHeight*0.25f)
+            )
+
+            Spacer(modifier = Modifier.height(screenHeight*0.01f))
+
+            //---------------------------------------------------------------------------------
+
+            val lazyListState = rememberLazyListState()
+            val snappingBehavior = rememberSnapFlingBehavior(lazyListState)
+
+            data class WelcomeCard(
+                val id: Int,
+                val imageResource: Int,
+                val text: String,
+                val imageDescription: String
+            )
+
+            val welcomeCards = listOf(
+                WelcomeCard(
+                    id = 1,
+                    imageResource = R.drawable.welcomelock,
+                    text = "Com o SuperID, você armazena todas " +
+                            "as suas senhas em um só lugar, de forma " +
+                            "segura e acessível. Não se preocupe mais em " +
+                            "lembrar dezenas de códigos diferentes.",
+                    imageDescription = "Ícone de cadeado"
+                ),
+                WelcomeCard(
+                    id = 2,
+                    imageResource = R.drawable.welcomeqr,
+                    text = "Cansado de digitar senhas? Com o SuperID, você pode " +
+                            "acessar sites parceiros usando apenas o seu celular " +
+                            "e um QR Code. É rápido, seguro e sem complicações.",
+                    imageDescription = "Ícone de QR Code"
+                ),
+                WelcomeCard(
+                    id = 3,
+                    imageResource = R.drawable.welcomeopenfolder,
+                    text = "Agrupe suas senhas por categorias como sites, aplicativos ou " +
+                            "dispositivos físicos. Tudo organizado para você encontrar " +
+                            "o que precisa com facilidade.",
+                    imageDescription = "Ícone de Pasta Aberta"
+                )
+            )
+
+            LazyRow(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .height(screenHeight*0.07f)
+                    .fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = screenWidth * 0.055f),
+                state = lazyListState,
+                flingBehavior = snappingBehavior,
+                horizontalArrangement = Arrangement.Center
+
             ) {
-                Text(text = "Realizar Cadastro",
-                    fontSize = (screenHeight*0.025f).value.sp
-                    )
+                items(welcomeCards) { card ->
+                    Card(modifier = Modifier
+                        .padding(horizontal = screenWidth * 0.02f)
+                        .width(screenWidth * 0.85f)
+                        .heightIn(max = screenHeight * 0.45f)
+                        .align(alignment = Alignment.CenterHorizontally)
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(screenWidth*0.075f)
+                        ) {
+                            Spacer(modifier = Modifier.weight(1f))
+
+                            Image(painter = painterResource(card.imageResource),
+                                contentDescription = card.imageDescription,
+                                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
+                                modifier = Modifier.size(screenWidth*0.25f)
+                            )
+
+                            Spacer(modifier = Modifier.weight(2f))
+
+                            Text(textAlign = TextAlign.Center,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = (screenHeight*0.02f).value.sp,
+                                text = card.text,
+                                lineHeight = (screenHeight * 0.03f).value.sp
+                            )
+
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+
             }
 
-            Button(onClick = {
-                Intent(context, LoginActivity::class.java).also {
-                    context.startActivity(it)
-                }
-            },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .height(screenHeight*0.07f)
+            Spacer(modifier = Modifier.weight(1f))
+
+            val context = LocalContext.current
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(screenHeight*0.01f)
             ) {
-                Text(text = "Fazer Login",
-                    fontSize = (screenHeight*0.025f).value.sp
+                Button(onClick = {
+                    Intent(context, TermsOfUseActivity::class.java).also {
+                        context.startActivity(it)
+                    }
+                },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = screenWidth*0.05f)
+                        .height(screenHeight*0.07f)
+                ) {
+                    Text(text = "Realizar Cadastro",
+                        fontSize = (screenHeight*0.025f).value.sp
                     )
+                }
+
+                Button(onClick = {
+                    Intent(context, LoginActivity::class.java).also {
+                        context.startActivity(it)
+                    }
+                },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = screenWidth*0.05f)
+                        .height(screenHeight*0.07f)
+                ) {
+                    Text(text = "Fazer Login",
+                        fontSize = (screenHeight*0.025f).value.sp
+                    )
+                }
             }
         }
     }

@@ -1,5 +1,6 @@
 package br.com.superid.user
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -8,6 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,9 +46,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,36 +66,59 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import br.com.superid.R
 import br.com.superid.auth.SignUpActivity
-import br.com.superid.user.ui.theme.SuperIDTheme
+import br.com.superid.ui.theme.SuperIDTheme
 
 class TermsOfUseActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SuperIDTheme {
-                TermsOfUseApp()
+            val systemDark = isSystemInDarkTheme()
+            val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
+            var isDarkTheme by remember { mutableStateOf(prefs.getBoolean("is_dark_theme", systemDark)) }
+
+            val lifecycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME) {
+                        isDarkTheme = prefs.getBoolean("is_dark_theme", systemDark)
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
+            }
+
+            SuperIDTheme(
+                darkTheme = isDarkTheme
+            ) {
+                TermsOfUseScreen(modifier = Modifier
+                    .fillMaxSize()
+                    .wrapContentSize(),
+
+                    onToggleTheme = {
+                        isDarkTheme = !isDarkTheme
+                        prefs.edit().putBoolean("is_dark_theme", isDarkTheme).apply() },
+                    isDarkTheme = isDarkTheme
+                )
             }
         }
     }
 }
 
-@Preview(showBackground = true
-//    , device = "spec:width=800dp,height=1280dp,dpi=240"
-)
-@Composable
-fun TermsOfUseApp() {
-    TermsOfUseScreen(modifier = Modifier
-        .fillMaxSize()
-        .wrapContentSize(Alignment.Center)
-    )
-}
-
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun TermsOfUseScreen(modifier: Modifier = Modifier) {
+fun TermsOfUseScreen(
+    onToggleTheme: () -> Unit,
+    isDarkTheme: Boolean,
+    modifier: Modifier = Modifier
+) {
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val context = LocalContext.current
@@ -102,22 +129,15 @@ fun TermsOfUseScreen(modifier: Modifier = Modifier) {
         topBar = {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = Color.Black
+                    containerColor = MaterialTheme.colorScheme.background,
                 ),
                 title = {
                     Text("Termos de uso")
                 },
                 navigationIcon = {
                     IconButton(onClick = {
-                        Intent(context, WelcomeActivity::class.java).also{
-                            context.startActivity(it)
-                        }
+                        (context as? ComponentActivity)?.finish()
                     }) {
-//                        Image(painter = painterResource(R.drawable.returnarrow),
-//                            contentDescription = "Seta de retorno à tela anterior",
-//                            colorFilter = ColorFilter.tint(Color.Black)
-//                            )
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Seta de retorno à tela anterior"
@@ -139,8 +159,11 @@ fun TermsOfUseScreen(modifier: Modifier = Modifier) {
                         onDismissRequest = { expanded = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Ativar modo claro") },
-                            onClick = {}
+                            onClick = {
+                                onToggleTheme()
+                                expanded = false
+                            },
+                            text = { Text(if (isDarkTheme) "Ativar modo claro" else "Ativar modo escuro") }
                         )
                     }
                 }
@@ -156,16 +179,14 @@ fun TermsOfUseScreen(modifier: Modifier = Modifier) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    //.padding(bottom = 40.dp, top = screenHeight*0.03f)
                     .fillMaxWidth()
-                    //.padding(innerPadding)
                     .padding(bottom = screenHeight * 0.03f)
             ) {
                 Text(
                     text = "Por favor, leia os termos de uso do aplicativo antes de continuar:",
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center,
-                    fontSize = (screenHeight * 0.03f).value.sp,
+                    fontSize = (screenHeight * 0.025f).value.sp,
                     modifier = Modifier.padding(screenHeight * 0.03f),
                     lineHeight = (screenHeight * 0.03f).value.sp
                 )
@@ -271,28 +292,25 @@ fun TermsOfUseScreen(modifier: Modifier = Modifier) {
                         Card(
                             modifier = Modifier
                                 .padding(horizontal = screenWidth * 0.02f)
-                                //.fillMaxWidth()
                                 .width(screenWidth * 0.85f)
-                                .height(screenHeight * 0.55f)
+                                .height(screenHeight * 0.6f)
                                 .align(alignment = Alignment.CenterHorizontally)
                         ) {
                             Column(
                                 horizontalAlignment = Alignment.Start,
-                                modifier = Modifier.padding(30.dp)
+                                modifier = Modifier.padding(screenWidth*0.05f)
                             ) {
-                                //Spacer(modifier = Modifier.height(screenHeight*0.005f))
-
                                 Text(
                                     text = card.title,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = (screenHeight * 0.025f).value.sp
+                                    fontSize = (screenHeight * 0.0225f).value.sp
                                 )
 
-                                Spacer(modifier = Modifier.height(screenHeight * 0.03f))
+                                Spacer(modifier = Modifier.height(screenHeight * 0.02f))
 
                                 Text(
                                     text = card.description,
-                                    fontSize = (screenHeight * 0.0175f).value.sp
+                                    fontSize = (screenHeight * 0.0165f).value.sp
                                 )
 
                                 Spacer(modifier = Modifier.height(screenHeight * 0.025f))
@@ -302,8 +320,8 @@ fun TermsOfUseScreen(modifier: Modifier = Modifier) {
                                         separator = "\n• ",
                                         prefix = "• "
                                     ),
-                                    modifier = Modifier.padding(horizontal = 16.dp),
-                                    fontSize = (screenHeight * 0.0155f).value.sp
+                                    modifier = Modifier.padding(horizontal = screenWidth*0.01f),
+                                    fontSize = (screenHeight * 0.0145f).value.sp
                                 )
 
                             }
