@@ -57,21 +57,21 @@ Como instalar:
 
 Após instalar o aplicativo, siga os passos abaixo para utilizar o SuperID:
 
-# Cadastro e Login:
+Cadastro e Login:
 - Abra o aplicativo e crie uma nova conta com seu email e senha mestre.
 - Um email de verificação será enviado. Confirme-o antes de utilizar as funções principais.
 
-# Gerenciamento de Senhas:
+Gerenciamento de Senhas:
 - Acesse a aba de senhas e selecione uma das categorias: Web, Aplicativos ou Acessos Físicos.
 - Adicione uma nova senha com nome, descrição e nível de segurança.
 - Cada senha recebe um token de autenticação exclusivo (accessToken).
 
-# Autenticação com QR Code:
+Autenticação com QR Code:
 - Acesse o site parceiro do SuperID.
 - Na página de login, escaneie o QR Code usando o app.
 - A autenticação será processada automaticamente, sem necessidade de digitar senha.
 
-# Recuperação de Senha Mestre:
+Recuperação de Senha Mestre:
 - Caso esqueça sua senha mestre, utilize a opção de redefinição na tela de login.
 - Um link de recuperação será enviado para seu email.
 
