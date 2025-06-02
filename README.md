@@ -39,5 +39,44 @@ A documentação abaixo é o guia para rodar o site.
 - Utilize o firebase deploy para conectar todas as funções a nuvem.
 - Rode o npm start.
 
+### Protótipo
 
 Link para o protótipo no figma: https://www.figma.com/design/1Z5GHg0xvMkk7qxFhQr74p/Aplicativo-SuperID---G105-8?node-id=0-1&t=xX35lx8ZxYUuBUku-1
+
+### Instalação 
+
+Como instalar:
+
+- Acesse a seção de Releases deste repositório.
+- Baixe o arquivo APK disponível na versão mais recente (SuperID-v1.0.0.apk).
+- Transfira o APK para seu dispositivo Android ou abra diretamente no celular.
+- Permita a instalação de apps de fontes externas, caso solicitado.
+- Instale o aplicativo normalmente.Release v1.0.0 - SuperID
+
+### Como Usar
+
+Após instalar o aplicativo, siga os passos abaixo para utilizar o SuperID:
+
+# Cadastro e Login:
+- Abra o aplicativo e crie uma nova conta com seu email e senha mestre.
+- Um email de verificação será enviado. Confirme-o antes de utilizar as funções principais.
+
+# Gerenciamento de Senhas:
+- Acesse a aba de senhas e selecione uma das categorias: Web, Aplicativos ou Acessos Físicos.
+- Adicione uma nova senha com nome, descrição e nível de segurança.
+- Cada senha recebe um token de autenticação exclusivo (accessToken).
+
+# Autenticação com QR Code:
+- Acesse o site parceiro do SuperID.
+- Na página de login, escaneie o QR Code usando o app.
+- A autenticação será processada automaticamente, sem necessidade de digitar senha.
+
+# Recuperação de Senha Mestre:
+- Caso esqueça sua senha mestre, utilize a opção de redefinição na tela de login.
+- Um link de recuperação será enviado para seu email.
+
+### Participantes
+
+- Augusto Fidélis dos Santos Custódio - 24024320
+- Caio Adamo Scomparin - 23028248
+- Hugo Daniel Bosada Rodrigues - 23909526
