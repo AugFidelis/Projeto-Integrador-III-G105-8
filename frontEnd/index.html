@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SuperID Login via QR Code</title>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <Link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+    <main class="container">
+        <div class="logo-container">
+            <img src="assets/img/Logo_SuperID.png" alt="Logo SuperID" class="Logo">
+        </div>
+        
+        <h1>Login via QR Code</h1>
+        <p class="instruction-text">Clique no botão para gerar seu QR Code de acesso:</p>
+
+        <button type="button" class="generate-qr-btn" id="generateQrCodeBtn">Gerar QR Code</button>
+
+        <p class="message loading-message-qr" id="loading-qr-msg" style="display: none;">Gerando QR Code...</p>
+        <p class="message error-message-qr" id="error-qr-msg" style="display: none;"></p>
+
+        <div class="qr-code-display-area" id="qrcode-display-area">
+            <img id="qrcode-img" src="" alt="QR Code de Login">
+            <p class="qr-instruction">Escaneie este QR Code no seu aplicativo SuperID.</p>
+            <p class="countdown-timer" id="countdown-timer"></p> 
+        </div>
+        
+        <div class="login-status-area" id="login-status-display" style="display: none;">
+            <p class="message success-message" id="login-success-msg" style="display: none;">Login realizado com sucesso!</p>
+            <p class="message error-message" id="login-error-msg" style="display: none;"></p>
+        </div>
+        <div class="register-link">
+            <p>Não tem uma conta? <a href="cadastro.html">Cadastre-se.</a> </p>
+        </div>
+    </main>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="login.js"></script>
+</body>
+</html>
