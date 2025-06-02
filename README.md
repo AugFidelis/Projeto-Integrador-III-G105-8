@@ -48,7 +48,7 @@ Link para o protótipo no figma: https://www.figma.com/design/1Z5GHg0xvMkk7qxFhQ
 Como instalar:
 
 - Acesse a seção de Releases deste repositório.
-- Baixe o arquivo APK disponível na versão mais recente (SuperID-v1.0.0.apk).
+- Baixe o arquivo APK disponível na [release](https://github.com/AugFidelis/Projeto-Integrador-III-G105-8/releases/tag/v1.0.0) mais recente (app-release.apk).
 - Transfira o APK para seu dispositivo Android ou abra diretamente no celular.
 - Permita a instalação de apps de fontes externas, caso solicitado.
 - Instale o aplicativo normalmente.Release v1.0.0 - SuperID
