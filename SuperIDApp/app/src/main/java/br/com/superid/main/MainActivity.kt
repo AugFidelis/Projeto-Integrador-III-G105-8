@@ -154,6 +154,23 @@ fun MainScreen(
     var expandedCardMenuIndex by remember { mutableStateOf(-1) }
     var confirmarExclusaoIndex by remember { mutableStateOf(-1) }
 
+    var mostrarAvisoLimpeza by remember { mutableStateOf(false) }
+
+    // Função auxiliar para limpar todas as senhas do usuário
+    fun limparTodasSenhas(uid: String, db: com.google.firebase.firestore.FirebaseFirestore, onFinish: () -> Unit) {
+        db.collection("Users").document(uid).collection("Senhas")
+            .get()
+            .addOnSuccessListener { result ->
+                val batch = db.batch()
+                for (doc in result) {
+                    batch.delete(doc.reference)
+                }
+                batch.commit().addOnSuccessListener {
+                    onFinish()
+                }
+            }
+    }
+
     // Carrega categorias e senhas
     LaunchedEffect(uid, secretKey) {
         if (uid.isNotBlank()) {
@@ -223,8 +240,22 @@ fun MainScreen(
                             category= doc.getString("Categoria") ?: ""
                         )
                     }
-                    senhas = listaSenhas
-                    isLoadingSenhas = false
+
+                    // Verifica se todas as senhas falharam ao descriptografar (ou se existe pelo menos uma senha no resultado)
+                    val todasFalharam = listaSenhas.isNotEmpty() && listaSenhas.all { it.password == "[Falha ao descriptografar]" }
+
+                    if (todasFalharam) {
+                        // Limpa todas as senhas do usuário
+                        limparTodasSenhas(uid, db) {
+                            // Depois da limpeza, zera a lista e mostra aviso
+                            senhas = emptyList()
+                            mostrarAvisoLimpeza = true
+                            isLoadingSenhas = false
+                        }
+                    } else {
+                        senhas = listaSenhas
+                        isLoadingSenhas = false
+                    }
                 }
                 .addOnFailureListener { e ->
                     senhasErro = "Erro ao buscar senhas: ${e.localizedMessage}"
@@ -232,6 +263,17 @@ fun MainScreen(
                     senhas = emptyList()
                 }
         }
+    }
+
+    if (mostrarAvisoLimpeza) {
+        AlertDialog(
+            onDismissRequest = { mostrarAvisoLimpeza = false },
+            confirmButton = {
+                TextButton(onClick = { mostrarAvisoLimpeza = false }) { Text("OK") }
+            },
+            title = { Text("Senhas removidas") },
+            text = { Text("Sua senha-mestra foi redefinida. Por segurança, todas as senhas salvas anteriormente foram removidas, pois não podem mais ser acessadas.") }
+        )
     }
 
     val isEmailVerified = auth.currentUser?.isEmailVerified

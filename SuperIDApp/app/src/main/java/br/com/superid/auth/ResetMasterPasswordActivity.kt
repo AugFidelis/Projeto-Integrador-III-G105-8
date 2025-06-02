@@ -219,11 +219,20 @@ fun ResetMasterPasswordScreen(
                                     user.updatePassword(newPassword)
                                         .addOnSuccessListener {
                                             isLoading = false
+                                            // Limpa a chave de criptografia da sessão (garante que não ficará com a chave antiga)
+                                            SessionManager.secretKey = null
+
                                             Toast.makeText(
                                                 context,
-                                                "Senha atualizada com sucesso!",
+                                                "Senha atualizada com sucesso! Você precisará fazer login novamente.",
                                                 Toast.LENGTH_LONG
                                             ).show()
+
+                                            // Redireciona para a tela de login, limpando a pilha de activities
+                                            val intent = Intent(context, LoginActivity::class.java)
+                                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                            context.startActivity(intent)
+                                            // Encerra a tela atual
                                             (context as? ComponentActivity)?.finish()
                                         }
                                         .addOnFailureListener { e ->
